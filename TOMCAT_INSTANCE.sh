@@ -20,7 +20,7 @@ if [ -z  $1 ]
     WHITE)
       echo -e "\e[107m\e[30m";; 
     YELLOW)
-      echo -e "\e[43m";;
+      echo -e "\e[43m\e[30m";;
     BOLD) 
       echo -e "\e[1m";;
     UNDERL)
@@ -37,12 +37,13 @@ echo -e "$(Color WHITE)CATALINA_HOME:\t\t$(Color)$CATALINA_HOME"
 echo -e "$(Color WHITE)CATALINA_BASE:\t\t$(Color)$CATALINA_BASE"
 echo -e "$(Color WHITE)JAVA_HOME:\t\t$(Color)$JAVA_HOME"
 echo -e "$(Color WHITE)UNIT SYSTEMD:$(Color)\t\tinstalled: $(Systemd_enable)\tStatut: $(Systemd_status)"
-echo -e "$(Color WHITE)Controles:$(Color)\t\tJDK: $(Check_jdk)\tJstat: $(Check_jstat)\tJmx4perl: $(Check_jmx4perl)"
+echo -e "$(Color WHITE)Controles:$(Color)\t\tJDK: $(Check_jdk)\tJstat: $(Check_jstat)\tJmx4perl: $(Check_jmx4perl)\tLdapsearch: $(Check_ldapsearch)\tDIDA Conf: $(Check_dida_jdbc_info)\tDIDA cnx: $(Check_dida_connection)"
 echo -e "$(Color WHITE)Infos Techniques:$(Color)"
 echo -e "\t$(Color BOLD)Port$(Color)\t$(Color BOLD)Thread$(Color)\t$(Color BOLD)Accept $(Color)\t$(Color BOLD)Compr$(Color)\t$(Color BOLD)Connect$(Color)\t$(Color BOLD)XMX$(Color)\t$(Color BOLD)XMS$(Color)"
-echo -e "\t$(Color BOLD)$(Color)\t$(Color BOLD)PoolMax$(Color)\t$(Color BOLD)Count$(Color)\t\t$(Color BOLD)Type$(Color)\t$(Color BOLD)Mo$(Color)\t$(Color BOLD)Mo$(Color)"
+echo -e "\t$(Color BOLD)$(Color)\t$(Color BOLD)PoolMax$(Color)\t$(Color BOLD)Count$(Color)\t$(Color BOLD)ession$(Color)\t$(Color BOLD)Type$(Color)\t$(Color BOLD)Mo$(Color)\t$(Color BOLD)Mo$(Color)"
 echo -e "\t$(Color BOLD)----$(Color)\t$(Color BOLD)------$(Color)\t$(Color BOLD)----$(Color)\t$(Color BOLD)----$(Color)\t$(Color BOLD)----$(Color)\t$(Color BOLD)----$(Color)\t$(Color BOLD)----$(Color)"
 echo -e "Config:\t$(Color BOLD)$(Port_http_check)$(Color)\t$(Color BOLD)$(Max_threads)$(Color)\t$(Color BOLD)$(Accept_count)$(Color)\t$(Color BOLD)$(Compression)$(Color)\t$(Color BOLD)$(Connector_type)$(Color)\t$(Color BOLD)$(Jvm_xmx_config)$(Color)\t$(Color BOLD)$(Jvm_xms_config)$(Color)"
+
 
 if  [  -n "$(Pid)" ]
   then
@@ -53,9 +54,13 @@ if  [  -n "$(Pid)" ]
     echo -e "\t$(Color BOLD)-------\t----\t ---\t------\t-------\t-------\t-------\t-------\t------$(Color)"
     echo -e "$(Color BOLD)Actuel:\t$(Current_threads)\t$(Jvm_heap_memory)\t$(Jvm_cpu_use)\t$(Jvm_ram_memory)\t$(Session_active_count)\t$(Request_count)\t$(Avg_process_time)\t$(Thread_pool_buzyness)\t$(Error_average)$(Color)"
     echo -e "$(Color BOLD)Max:\t-----\t$(Jvm_max_heap_memory)\t-----\t-----\t$(Session_max_active_count)\t-------\t-------\t-------\t-------$(Color)"
+    echo ""
+    status 1 
+  else
+    echo ""
+    status 1 
 fi
 echo ""
-status 1 
 }
 
 Instance() {
@@ -159,6 +164,46 @@ if [ ! -z $JDK_HOME -a -x $JDK_HOME/bin/jstat ]
 fi
 }
 
+Check_ldapsearch() {
+if [ ! -z $ORACLE_HOME -a -x $ORACLE_HOME/bin/ldapsearch -a -f $ORACLE_HOME/network/admin/ldap.ora ]
+  then echo -e "$(Color BOLD)$(Color GREEN)OK$(Color)"
+  else echo -e "$(Color BOLD)$(Color YELLOW)NON$(Color)"
+fi
+}
+
+Check_dida_jdbc_info() {
+APPLICATION_PROPERTIES="$CATALINA_BASE/conf/gamma/etc/application.properties"
+if [ -f $APPLICATION_PROPERTIES ]
+  then
+    export DIDA_URL=$(cat $APPLICATION_PROPERTIES | grep -v "#" | grep dida.url) 
+    DIDA_DRIVER=$(cat $APPLICATION_PROPERTIES | grep -v "#" | grep dida.driver) 
+    DIDA_INSTANCE=$(cat $APPLICATION_PROPERTIES | grep -v "#" | grep dida.instance) 
+    DIDA_HOST=$(cat $APPLICATION_PROPERTIES | grep -v "#" | grep dida.url | sed -e "s/=/ /g" |sed -e "s/:/ /g" | awk {'print $5'} | sed -e "s/@//g"  ) 
+    DIDA_LISTENER=$(cat $APPLICATION_PROPERTIES | grep -v "#" | grep dida.url | sed -e "s/=/ /g" |sed -e "s/:/ /g" | awk {'print $6'}  ) 
+    DIDA_SID=$(cat $APPLICATION_PROPERTIES | grep -v "#" | grep dida.url | sed -e "s/=/ /g" |sed -e "s/:/ /g" | awk {'print $7'}  ) 
+    DIDA_USER=$(cat $APPLICATION_PROPERTIES | grep -v "#" | grep dida.user | sed -s "s/dida.user=//g" ) 
+    DIDA_PWD=$(cat $APPLICATION_PROPERTIES | grep -v "#" | grep dida.password | sed -s "s/dida.password=//g") 
+    DIDA_ENV=$(cat $APPLICATION_PROPERTIES | grep -v "#" | grep dida.env) 
+    if [ ! -z $DIDA_URL -a ! -z $DIDA_DRIVER -a ! -z $DIDA_INSTANCE ]
+      then echo -e "$(Color BOLD)$(Color GREEN)OK$(Color)"
+    fi
+  else echo -e "$(Color BOLD)$(Color RED)CONFIG !$(Color)"
+
+fi
+}
+
+Check_dida_connection() {
+Check_dida_jdbc_info >/dev/null
+URL="(description=(address_list=(address=(protocol=TCP)(host=$DIDA_HOST)(port=$DIDA_LISTENER)))(connect_data=(service_name=$DIDA_SID)))"
+
+echo "exit" | sqlplus -L $DIDA_USER/$DIDA_PWD@$URL | grep Connected > /dev/null
+if [ $? -eq 0 ]
+  then echo -e "$(Color BOLD)$(Color GREEN)OK$(Color)"
+  else echo -e "$(Color BOLD)$(Color RED)CONFIG !$(Color)" 
+fi
+
+}
+
 Check_jmx4perl() {
 if [ -x /usr/bin/jmx4perl ]
   then echo -e "$(Color BOLD)$(Color GREEN)OK$(Color)"
@@ -178,7 +223,7 @@ if [[ $(Check_jmx4perl) == *OK* ]]
       HEAP_MEMORY=${HEAP_MEMORY%.*}
       echo -e $(Color BOLD)$HEAP_MEMORY Mo$(Color)
     else
-      echo -e $(Color BOLD)$(Color YELLOW)No JDK/JMX$(Color)
+      echo -e $(Color BOLD)$(Color YELLOW)No JDK$(Color)
   fi
 fi
 }
@@ -395,7 +440,22 @@ JVM_XMS=$(ps -ef|grep $(Pid)| grep -v grep|egrep -o 'Xms[0-9]*' |tr '\r' ' '| se
 echo $JVM_XMS
 }
 
+Check_ldap_ora_oid_file() {
+LDAP_ORA_OID_FILE="$CONFIG_PATH/tmp_dir/LDAP_ORA_OID_FILE.txt"
+if [ -f $LDAP_ORA_OID_FILE ] 
+  then
+    CHECK_LDAP_ORA_OID_FILE=true
+  else 
+    CHECK_LDAP_ORA_OID_FILE=false
+fi
+}
 
+
+Generate_ldap_ora_oid_file() {
+LDAP_BASE=$(cat $ORACLE_HOME/network/admin/ldap.ora | grep default_admin_context | awk '{print $3}' )
+LDAP_SERVERS=$(cat $ORACLE_HOME/network/admin/ldap.ora | grep directory_servers | awk '{print $2}' | sed -e "s/(//g" | sed -e "s/)//g" | sed -e "s/,/ /g" | sed -e "s/:/ /g" )
+
+}
 
 start() {
 $CATALINA_HOME/bin/startup.sh
@@ -470,29 +530,56 @@ fi
 
 Net_threads() {
 status $2 >/dev/null
-echo "## threads ouverts et cible reseau pour cette instance"
-netstat -aop 2>/dev/null | grep $(Pid) | grep tcp | grep -v LISTEN | awk {'print $5'} | sort | uniq -c
+#echo "## threads ouverts et cible reseau pour cette instance"
+#echo -e "Source\t"
+echo -e "$(Color BOLD)Connexions Actives$(Color)\tSOURCE\t\t\tDESTINATION\tDESTINATION FQDN\t\tPORT\tTYPE\tNOMBRE\t$(Color)"
+echo -e "$(Color BOLD)\t\t\t------\t\t\t-----------\t----------------\t\t----\t----\t------\t$(Color)"
+while read -r COUNT DEST PORT  
+do 
+FQDN=$(getent hosts $DEST | awk {'print $2'})
+if [ "$PORT" == "1414" ] 
+  then TYPE="MQ"
+fi
+echo -e "$(Color WHITE)\t\t\tLOCALHOST$(Color)\t==>\t$DEST\t$FQDN\t$PORT\t$TYPE\t$COUNT"
+TYPE=
+done <<< "$(netstat -aopn 2>/dev/null | grep $(Pid) | grep tcp | grep -v LISTEN | awk {'print $5'} | sed -e "s/:/ /g" | sort | uniq -c)"
+
+echo ""
+echo -e "$(Color BOLD)Ports Ouverts$(Color)\t\tSOURCE\t\t\tPORT\t\tINTERFACE$(Color)"
+echo -e "$(Color BOLD)\t\t\t------\t\t\t----\t\t---------$(Color)"
+while read -r SOURCE PORT INTERFACE PORT_INT
+do
+if [ "$SOURCE" == "127.0.0.1" ]
+  then SOURCE="$(Color GREEN)LOCALE$(Color)"
+  else SOURCE="TOUTES" 
+fi
+
+if [ "$INTERFACE" == "0.0.0.0" ]
+  then INTERFACE="TOUTES"
+fi
+
+echo -e "$(Color WHITE)\t\t\t$SOURCE$(Color)\t\t==>\t$PORT\t\t$INTERFACE"
+done <<< "$(netstat -aopn 2>/dev/null | grep $(Pid) | grep tcp | grep LISTEN | awk {'print $4" "$5'} | sed -e "s/:/ /g")" 
+#echo -e "netstat -aopn 2>/dev/null | grep $(Pid) | grep tcp | grep LISTEN | awk {'print $4" "$5'} | sed -e "s/:/ /g""
 }
 
 Db_sessions() {
-echo "## Sesions Oracle pour cette instance TOMCAT" $(Instance)
-echo "---- BDD DIDADEV"
-sqlplus -s DIDADEV/DIDADEV@Z2X11 @$TOOLS_HOME/oracle_sessions.sql $(Instance)
-echo "----"
+#echo "## Sesions Oracle pour cette instance TOMCAT" $(Instance)
+#echo "---- BDD DIDADEV"
+#sqlplus -s DIDADEV/DIDADEV@Z2X11 @$TOOLS_HOME/oracle_sessions.sql $(Instance)
+#echo "----"
 #echo "---- BDD DIDADEV BENCH"
 #sqlplus -s DIDADEV/DIDADEV@Z2XB4I05 @$TOOLS_HOME/oracle_sessions.sql $(Instance)
 #echo "----"
+true
 }
 
 
 Diags() {
 clear
 Instance_Info
-echo "#######################"
 Net_threads
-echo "#######################"
 Db_sessions
-echo "#######################"
 
 
 }
