@@ -3,7 +3,7 @@
 SOURCE_PATH=$(pwd)
 SCRIPT_PATH=$(dirname $0)
 CONFIG_PATH=$SCRIPT_PATH/../config/local.sh
-
+JRE_HOME=
 . $CONFIG_PATH
 
 Color() {
@@ -32,7 +32,7 @@ fi
 Instance_Info() {
 echo -e "$(Color WHITE)Legende:$(Color)\t\tJMX4PERL: $(Color WHITE)$(Color BOLD)$(Color UNDERL)VALEUR$(Color)"
 echo -e "$(Color WHITE)INSTANCE:\t\t$(Color)$(Color BOLD)$(Instance)$(Color) "
-echo -e "$(Color WHITE)Demarree depuis:\t$(Color)$(Color BOLD)$(Start_time)$(Color) "
+echo -e "$(Color WHITE)Demarree depuis:\t$(Color)$(Color BOLD)$(Start_time)$(Color)\tRefresh (Secs):\t$(Color BOLD)$1$(Color)"
 echo -e "$(Color WHITE)CATALINA_HOME:\t\t$(Color)$CATALINA_HOME"
 echo -e "$(Color WHITE)CATALINA_BASE:\t\t$(Color)$CATALINA_BASE"
 echo -e "$(Color WHITE)JAVA_HOME:\t\t$(Color)$JAVA_HOME"
@@ -43,11 +43,13 @@ echo -e "\t$(Color BOLD)Port$(Color)\t$(Color BOLD)Thread$(Color)\t$(Color BOLD)
 echo -e "\t$(Color BOLD)$(Color)\t$(Color BOLD)PoolMax$(Color)\t$(Color BOLD)Count$(Color)\t$(Color BOLD)ession$(Color)\t$(Color BOLD)Type$(Color)\t$(Color BOLD)Mo$(Color)\t$(Color BOLD)Mo$(Color)"
 echo -e "\t$(Color BOLD)----$(Color)\t$(Color BOLD)------$(Color)\t$(Color BOLD)----$(Color)\t$(Color BOLD)----$(Color)\t$(Color BOLD)----$(Color)\t$(Color BOLD)----$(Color)\t$(Color BOLD)----$(Color)"
 echo -e "Config:\t$(Color BOLD)$(Port_http_check)$(Color)\t$(Color BOLD)$(Max_threads)$(Color)\t$(Color BOLD)$(Accept_count)$(Color)\t$(Color BOLD)$(Compression)$(Color)\t$(Color BOLD)$(Connector_type)$(Color)\t$(Color BOLD)$(Jvm_xmx_config)$(Color)\t$(Color BOLD)$(Jvm_xms_config)$(Color)"
+    echo -e "============================================================================================================" 
+tput sc
+}
 
-
+Instance_info_dynamic() {
 if  [  -n "$(Pid)" ]
   then
-    echo -e "============================================================================================================" 
     echo -e "\t$(Color BOLD)Threads\tHeap\tJVM \tRam   \tSession\tRequest\tProcess\tThread \tAvg   $(Color)"
     echo -e "\t$(Color BOLD)OS     \tSize\tCPU \tMemory\tActive \tCount  \tTimeAvg\tPool   \tError $(Color)"
     echo -e "\t$(Color BOLD)       \t    \t    \t      \tCount  \t       \t       \tCur/Mx \tRate  $(Color)"
@@ -82,6 +84,28 @@ Port_http() {
 PORT_HTTP=$(cat $CATALINA_BASE/conf/server.xml | grep "Connector port=" | awk '{print $2}'| sed -e "s/=/ /g"| awk '{print $2}' | sed -e "s/\"//g")
 echo $PORT_HTTP
 }
+
+Port_shutdown() {
+PORT_SHUTDOWN=$(cat $CATALINA_BASE/conf/server.xml | grep "Server port=" | awk '{print $2}'| sed -e "s/=/ /g"| awk '{print $2}' | sed -e "s/\"//g")
+echo $PORT_SHUTDOWN
+}
+
+Port_jmx() {
+PORT_JMX=$(echo $CATALINA_OPTS | awk -F"Dcom.sun.management.jmxremote.port=" '/Dcom.sun.management.jmxremote.port=/{print $2}'| awk {'print $1'})
+if [ "$PORT_JMX" == "" ]
+  then echo "NO_JMX"
+  else echo $PORT_JMX
+fi
+}
+
+Port_jmx_server() {
+PORT_JMX_SERVER=$(echo $CATALINA_OPTS | awk -F"Dcom.sun.management.jmxremote.rmi.port=" '/Dcom.sun.management.jmxremote.rmi.port=/{print $2}'| awk {'print $1'})
+if [ "$PORT_JMX_SERVER" == "" ]
+  then echo "NO_JMX_SERVER"
+  else echo $PORT_JMX_SERVER
+fi
+}
+
 
 Port_http_check() {
 #PORT_HTTP=$(cat $CATALINA_BASE/conf/server.xml | grep "Connector port=" | awk '{print $2}'| sed -e "s/=/ /g"| awk '{print $2}' | sed -e "s/\"//g")
@@ -177,7 +201,7 @@ if [ -f $APPLICATION_PROPERTIES ]
   then
     export DIDA_URL=$(cat $APPLICATION_PROPERTIES | grep -v "#" | grep dida.url) 
     DIDA_DRIVER=$(cat $APPLICATION_PROPERTIES | grep -v "#" | grep dida.driver) 
-    DIDA_INSTANCE=$(cat $APPLICATION_PROPERTIES | grep -v "#" | grep dida.instance) 
+    DIDA_INSTANCE=$(cat $APPLICATION_PROPERTIES | grep -v "#" | grep dida.instance | sed -e "s/=/ /g" | awk {'print $2'}) 
     DIDA_HOST=$(cat $APPLICATION_PROPERTIES | grep -v "#" | grep dida.url | sed -e "s/=/ /g" |sed -e "s/:/ /g" | awk {'print $5'} | sed -e "s/@//g"  ) 
     DIDA_LISTENER=$(cat $APPLICATION_PROPERTIES | grep -v "#" | grep dida.url | sed -e "s/=/ /g" |sed -e "s/:/ /g" | awk {'print $6'}  ) 
     DIDA_SID=$(cat $APPLICATION_PROPERTIES | grep -v "#" | grep dida.url | sed -e "s/=/ /g" |sed -e "s/:/ /g" | awk {'print $7'}  ) 
@@ -199,9 +223,38 @@ URL="(description=(address_list=(address=(protocol=TCP)(host=$DIDA_HOST)(port=$D
 echo "exit" | sqlplus -L $DIDA_USER/$DIDA_PWD@$URL | grep Connected > /dev/null
 if [ $? -eq 0 ]
   then echo -e "$(Color BOLD)$(Color GREEN)OK$(Color)"
+	List_dida_ds_instance
   else echo -e "$(Color BOLD)$(Color RED)CONFIG !$(Color)" 
 fi
 
+}
+
+List_dida_ds_instance() {
+Check_dida_jdbc_info >/dev/null
+URL="(description=(address_list=(address=(protocol=TCP)(host=$DIDA_HOST)(port=$DIDA_LISTENER)))(connect_data=(service_name=$DIDA_SID)))"
+
+DIDA_DS_LIST_FILE=$INSTALL_DIR/tmp_dir/dida_ds_list.txt
+>$DIDA_DS_LIST_FILE
+sqlplus -s $DIDA_USER/$DIDA_PWD@$URL >/dev/null <<-EOF
+	set heading off feedback off verify off
+	SET PAGES 0
+	column dbuser format a20
+	column dburl format a59
+	spool $DIDA_DS_LIST_FILE
+	select dbuser,dburl from publi_databases where SITEDIDANAME='$DIDA_INSTANCE';
+	spool off
+	exit
+EOF
+
+}
+
+Check_jdbc_connection() {
+DIDA_DS_LIST_FILE=$INSTALL_DIR/tmp_dir/dida_ds_list.txt
+JDBC_DIDA=$(cat $DIDA_DS_LIST_FILE | grep $1>/dev/null )
+if [ $? -eq 0 ]
+  then echo "OK"
+  else echo "NO"
+fi
 }
 
 Check_jmx4perl() {
@@ -532,21 +585,27 @@ Net_threads() {
 status $2 >/dev/null
 #echo "## threads ouverts et cible reseau pour cette instance"
 #echo -e "Source\t"
-echo -e "$(Color BOLD)Connexions Actives$(Color)\tSOURCE\t\t\tDESTINATION\tDESTINATION FQDN\t\tPORT\tTYPE\tNOMBRE\t$(Color)"
-echo -e "$(Color BOLD)\t\t\t------\t\t\t-----------\t----------------\t\t----\t----\t------\t$(Color)"
+echo -e "$(Color BOLD)Connexions Actives$(Color)\tSOURCE\t\t\tDESTINATION IP\tPORT\tTYPE\tNOMBRE\tDESTINATION FQDN$(Color)"
+echo -e "$(Color BOLD)(OS)\t\t\t------\t\t\t--------------\t----\t----\t------\t----------------$(Color)"
 while read -r COUNT DEST PORT  
 do 
 FQDN=$(getent hosts $DEST | awk {'print $2'})
-if [ "$PORT" == "1414" ] 
+if [ "$(Check_jdbc_connection $PORT)" == "OK" ]
+  then TYPE="JDBC"
+  else TYPE="CLIENT"
+fi
+if [ "$PORT" == "1414" ]
   then TYPE="MQ"
 fi
-echo -e "$(Color WHITE)\t\t\tLOCALHOST$(Color)\t==>\t$DEST\t$FQDN\t$PORT\t$TYPE\t$COUNT"
+
+
+echo -e "$(Color WHITE)\t\t\tLOCALHOST$(Color)\t==>\t$DEST\t$PORT\t$TYPE\t$COUNT\t$FQDN"
 TYPE=
 done <<< "$(netstat -aopn 2>/dev/null | grep $(Pid) | grep tcp | grep -v LISTEN | awk {'print $5'} | sed -e "s/:/ /g" | sort | uniq -c)"
 
 echo ""
-echo -e "$(Color BOLD)Ports Ouverts$(Color)\t\tSOURCE\t\t\tPORT\t\tINTERFACE$(Color)"
-echo -e "$(Color BOLD)\t\t\t------\t\t\t----\t\t---------$(Color)"
+echo -e "$(Color BOLD)Ports Ouverts$(Color)\t\tSOURCE\t\t\tPORT\t\tINTERFACE\tTYPE$(Color)"
+echo -e "$(Color BOLD)(OS)\t\t\t------\t\t\t----\t\t---------\t----$(Color)"
 while read -r SOURCE PORT INTERFACE PORT_INT
 do
 if [ "$SOURCE" == "127.0.0.1" ]
@@ -558,7 +617,29 @@ if [ "$INTERFACE" == "0.0.0.0" ]
   then INTERFACE="TOUTES"
 fi
 
-echo -e "$(Color WHITE)\t\t\t$SOURCE$(Color)\t\t==>\t$PORT\t\t$INTERFACE"
+if [ "$PORT" == "$(Port_jmx)" ]
+  then TYPE="JMX_REGISTRY"
+  else
+    if [ "$PORT" == "$(Port_jmx_server)" ]
+      then TYPE="JMX_SERVER"
+      else TYPE="RANDOM_JMX"
+    fi
+fi
+if [ "$(Port_jmx)" == "NO_JMX" ]
+ then TYPE="UNKNOWN"
+fi
+
+if [ "$PORT" == "$(Port_http)" ]
+  then TYPE="HTTP"
+fi
+if [ "$PORT" == "$(Port_shutdown)" ]
+  then TYPE="SHUTDOWN"
+fi
+
+
+
+echo -e "$(Color WHITE)\t\t\t$SOURCE$(Color)\t\t==>\t$PORT\t\t$INTERFACE\t\t$TYPE\t"
+TYPE=
 done <<< "$(netstat -aopn 2>/dev/null | grep $(Pid) | grep tcp | grep LISTEN | awk {'print $4" "$5'} | sed -e "s/:/ /g")" 
 #echo -e "netstat -aopn 2>/dev/null | grep $(Pid) | grep tcp | grep LISTEN | awk {'print $4" "$5'} | sed -e "s/:/ /g""
 }
@@ -577,9 +658,31 @@ true
 
 Diags() {
 clear
-Instance_Info
-Net_threads
-Db_sessions
+TIMER=x$1
+if [ -z $TIMER -o "$TIMER" == "x" -o $(echo "$1" | grep -qE '^[0-9]+$'; echo $?) -ne "0" ]
+  then TIMER="NON"
+  else TIMER="$1"
+fi
+
+Instance_Info $TIMER
+if [ $TIMER -ne 0 2>/dev/null ] 
+  then 
+    while true   
+      do
+      Instance_info_dynamic
+      Net_threads
+      Db_sessions
+      sleep $TIMER
+      tput rc
+     #tput cup 14 0 
+     tput ed
+    done
+  else 
+      TIMER="NON"
+      Instance_info_dynamic   
+      Net_threads
+      Db_sessions
+fi 
 
 
 }
@@ -620,7 +723,7 @@ stats)
   Net_threads
 ;;
 diags)
-  Diags
+  Diags $2
 ;;
 *)
   help
