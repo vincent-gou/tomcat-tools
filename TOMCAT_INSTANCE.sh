@@ -4,7 +4,9 @@ SOURCE_PATH=$(pwd)
 SCRIPT_PATH=$(dirname $0)
 CONFIG_PATH=$SCRIPT_PATH/../config/local.sh
 JRE_HOME=
+
 . $CONFIG_PATH
+DATE=$(date +%Y-%m-%d_%H-%M)
 
 Color() {
 if [ -z  $1 ]
@@ -21,6 +23,8 @@ if [ -z  $1 ]
       echo -e "\e[107m\e[30m";; 
     YELLOW)
       echo -e "\e[43m\e[30m";;
+    BLUE)
+      echo -e "\e[44m";;
     BOLD) 
       echo -e "\e[1m";;
     UNDERL)
@@ -29,33 +33,87 @@ if [ -z  $1 ]
 fi
 }
 
+
+Convert_status() {
+# Fonction convertissant les OK / KO ou autre en couleurs
+if [ ! -z $1 ]
+  then
+    case $1 in
+      OK)
+        echo -e "$(Color GREEN)$1$(Color)";;
+      KO)
+        echo -e "$(Color RED)$1$(Color)";;
+    esac
+fi
+}
+
+
+Check_output() {
+METRICS=$2
+METRICS=x$2
+if [ -z "$METRICS" ] || [ "$METRICS" == "x" ] || [ "$(echo "$2" | grep "csv\|json" 1>/dev/null; echo $?)" -ne "0" ]
+  then METRICS="NON"
+  else export METRICS=$2;export INCR=$(($3 + 1));Output_$2 $INCR 
+
+fi
+
+}
+
+Output_csv() {
+## Definition du formatage de l'heure dans cette fonction
+TIME=$(date +%Y-%m-%d_%H:%M:%S)
+OUTPUT_FILE=$INSTALL_DIR/tmp_dir/TOMCAT_Metrics_$DATE.csv
+if [ $1 -eq 1 ]
+then 
+  echo -e "Date\t\t\tThreads\tHeap\tJVM CPU\tJVM Ram\tNb     \tNb     \tProc   \tThread\tError\tADP Cls\tNon ADP\tJDBC  " > $OUTPUT_FILE
+  echo -e "----\t\t\t-------\tSize\t-------\tSize Mb\tSession\tRequest\tTimeavg\tPool  \tRate \tSize Mb\tClsSize\tCount " >> $OUTPUT_FILE
+else
+  cat $OUTPUT_FILE.tmp | sed -e "s/Actuel:/$TIME/g" | tee -a $OUTPUT_FILE.merge
+  if [ -e  $OUTPUT_FILE.merge ]
+    then paste $OUTPUT_FILE.merge $OUTPUT_FILE.tmp3 >> $OUTPUT_FILE
+    #else echo "No file"; ls -l $INSTALL_DIR/tmp_dir;read
+  fi
+  rm -f $OUTPUT_FILE.merge
+  rm -f $OUTPUT_FILE.tmp*
+  
+fi
+
+}
+
 Instance_Info() {
-echo -e "$(Color WHITE)Legende:$(Color)\t\tJMX4PERL: $(Color WHITE)$(Color BOLD)$(Color UNDERL)VALEUR$(Color)"
+echo -e "$(Color WHITE)Legende:$(Color)\t\tJMX4PERL: $(Color WHITE)$(Color BOLD)$(Color UNDERL)VALEUR$(Color)\tHEAPDUMP File: $(Color BLUE)$(Color BOLD)$(Color UNDERL)VALEUR$(Color)"
 echo -e "$(Color WHITE)INSTANCE:\t\t$(Color)$(Color BOLD)$(Instance)$(Color) "
-echo -e "$(Color WHITE)Demarree depuis:\t$(Color)$(Color BOLD)$(Start_time)$(Color)\tRefresh (Secs):\t$(Color BOLD)$1$(Color)"
+echo -e "$(Color WHITE)Demarree depuis:\t$(Color)$(Color BOLD)$(Start_time)$(Color)\tRefresh (Secs):\t$(Color BOLD)$1$(Color)\tMetrics:\t$(Color BOLD)$2$(Color)"
 echo -e "$(Color WHITE)CATALINA_HOME:\t\t$(Color)$CATALINA_HOME"
 echo -e "$(Color WHITE)CATALINA_BASE:\t\t$(Color)$CATALINA_BASE"
 echo -e "$(Color WHITE)JAVA_HOME:\t\t$(Color)$JAVA_HOME"
 echo -e "$(Color WHITE)UNIT SYSTEMD:$(Color)\t\tinstalled: $(Systemd_enable)\tStatut: $(Systemd_status)"
-echo -e "$(Color WHITE)Controles:$(Color)\t\tJDK: $(Check_jdk)\tJstat: $(Check_jstat)\tJmx4perl: $(Check_jmx4perl)\tLdapsearch: $(Check_ldapsearch)\tDIDA Conf: $(Check_dida_jdbc_info)\tDIDA cnx: $(Check_dida_connection)"
+echo -e "$(Color WHITE)Controles:$(Color)\t\tJDK: $(Check_jdk)\tJstat: $(Check_jstat)\tJmx4perl: $(Check_jmx4perl)\tLdapsearch: $(Check_ldapsearch)\tDIDA Conf: $(Check_dida_jdbc_info)\tDIDA cnx: $(Check_dida_connection)\tLast Heap_Dump: $(Check_jvm_heapdump_last_cron_date) "
 echo -e "$(Color WHITE)Infos Techniques:$(Color)"
 echo -e "\t$(Color BOLD)Port$(Color)\t$(Color BOLD)Thread$(Color)\t$(Color BOLD)Accept $(Color)\t$(Color BOLD)Compr$(Color)\t$(Color BOLD)Connect$(Color)\t$(Color BOLD)XMX$(Color)\t$(Color BOLD)XMS$(Color)"
 echo -e "\t$(Color BOLD)$(Color)\t$(Color BOLD)PoolMax$(Color)\t$(Color BOLD)Count$(Color)\t$(Color BOLD)ession$(Color)\t$(Color BOLD)Type$(Color)\t$(Color BOLD)Mo$(Color)\t$(Color BOLD)Mo$(Color)"
 echo -e "\t$(Color BOLD)----$(Color)\t$(Color BOLD)------$(Color)\t$(Color BOLD)----$(Color)\t$(Color BOLD)----$(Color)\t$(Color BOLD)----$(Color)\t$(Color BOLD)----$(Color)\t$(Color BOLD)----$(Color)"
 echo -e "Config:\t$(Color BOLD)$(Port_http_check)$(Color)\t$(Color BOLD)$(Max_threads)$(Color)\t$(Color BOLD)$(Accept_count)$(Color)\t$(Color BOLD)$(Compression)$(Color)\t$(Color BOLD)$(Connector_type)$(Color)\t$(Color BOLD)$(Jvm_xmx_config)$(Color)\t$(Color BOLD)$(Jvm_xms_config)$(Color)"
-    echo -e "============================================================================================================" 
+echo -e "=======================================================================" 
+# Positionnement du point de rafraichissement si le parametre est passé au programme
 tput sc
 }
 
 Instance_info_dynamic() {
+
 if  [  -n "$(Pid)" ]
   then
-    echo -e "\t$(Color BOLD)Threads\tHeap\tJVM \tRam   \tSession\tRequest\tProcess\tThread \tAvg   $(Color)"
-    echo -e "\t$(Color BOLD)OS     \tSize\tCPU \tMemory\tActive \tCount  \tTimeAvg\tPool   \tError $(Color)"
-    echo -e "\t$(Color BOLD)       \t    \t    \t      \tCount  \t       \t       \tCur/Mx \tRate  $(Color)"
-    echo -e "\t$(Color BOLD)-------\t----\t ---\t------\t-------\t-------\t-------\t-------\t------$(Color)"
-    echo -e "$(Color BOLD)Actuel:\t$(Current_threads)\t$(Jvm_heap_memory)\t$(Jvm_cpu_use)\t$(Jvm_ram_memory)\t$(Session_active_count)\t$(Request_count)\t$(Avg_process_time)\t$(Thread_pool_buzyness)\t$(Error_average)$(Color)"
-    echo -e "$(Color BOLD)Max:\t-----\t$(Jvm_max_heap_memory)\t-----\t-----\t$(Session_max_active_count)\t-------\t-------\t-------\t-------$(Color)"
+    echo -e "\t$(Color BOLD)Threads\tHeap\tJVM \tRam   \tSession\tRequest\tProcess\tThread \tAvg   \tADP    \tNon-ADP\tJDBC $(Color)"
+    echo -e "\t$(Color BOLD)OS     \tSize\tCPU \tMemory\tActive \tCount  \tTimeAvg\tPool   \tError \tClasses\tClasses\tCount$(Color)"
+    echo -e "\t$(Color BOLD)       \t    \t    \t      \tCount  \t       \t       \tCur/Mx \tRate  \tSize Mb\tSize Mb\t$(Color)"
+    echo -e "\t$(Color BOLD)-------\t----\t ---\t------\t-------\t-------\t-------\t-------\t------\t-------\t-------\t-----$(Color)"
+    echo -e "$(Color BOLD)Actuel:\t$(Current_threads)\t$(Jvm_heap_memory)\t$(Jvm_cpu_use)\t$(Jvm_ram_memory)\t$(Session_active_count)\t$(Request_count)\t$(Avg_process_time)\t$(Thread_pool_buzyness)\t$(Error_average)\t$(Check_adp_heap_classes_size)\t$(Check_nonadp_heap_classes_size)$(Color)" | tee -a $OUTPUT_FILE.tmp
+    echo -e "$(Color BOLD)Max:\t-----\t$(Jvm_max_heap_memory)\t-----\t-----\t$(Session_max_active_count)\t-------\t-------\t-------\t-------\t-------\t-------$(Color)"
+    if [ $TIMER -ne 0 -a $INCR -gt 0 2>/dev/null ]
+      then
+            echo -e "$(Color BOLD)Max Se"
+            echo -e "$(Color BOLD)ssion:\t$(Current_threads_max_session)\t$(Jvm_max_heap_memory_session)\t$(Jvm_cpu_use_max_session)\t$(Jvm_ram_memory_max_session)\t$(Session_max_active_count_session)\t-------\t$(Avg_process_time_max_session)\t$(Thread_pool_buzyness_max_session)\t$(Error_average_max_session)$(Color)\t-------\t-------\t$(Jdbc_count_max_session)$(Color)"
+    fi
     echo ""
     status 1 
   else
@@ -64,6 +122,7 @@ if  [  -n "$(Pid)" ]
 fi
 echo ""
 }
+
 
 Instance() {
 INSTANCE=$(echo $CATALINA_BASE |  awk -F/ '{print $(NF-2)}' )
@@ -174,6 +233,34 @@ fi
 
 }
 
+Check_jvm_heapdump_last_cron_date() {
+#LAST_HEAP_DUMP=$(find $LOG_DIR/server/appli -maxdepth 1 -mtime -1 -type f -name cron_print_object_summary.$(Instance)*.log -exec ls -rt  {} \; | tail -1)
+LAST_HEAP_DUMP_DATE=$( find $LOG_DIR/server/appli -maxdepth 1 -mtime -1 -type f -name cron_print_object_summary.$(Instance)*.log -exec ls -lrt  {} \; | tail -1 | awk '{print $8}')
+if [ ! -z $LOG_DIR -a ! -z "$LAST_HEAP_DUMP_DATE" ]
+  then echo $LAST_HEAP_DUMP_DATE
+  else echo "NON"
+fi
+}
+
+Check_jvm_heapdump_cron_status() {
+if [ -n $(Check_jvm_heapdump_last_cron_date) ]
+  then echo "OK"
+  else echo "NON"
+fi
+}
+
+
+Check_last_heapdump_cron() {
+LAST_HEAP_DUMP=$(find $LOG_DIR/server/appli -maxdepth 1 -mtime -1 -type f -name cron_print_object_summary.$(Instance)*.log -exec ls -rt  {} \; | tail -1)
+echo $LAST_HEAP_DUMP
+}
+
+Check_last_metrics_session_file() {
+LAST_METRICS_SESSION_FILE=$(ls -t $INSTALL_DIR/tmp_dir/TOMCAT_Metrics_*.csv | head -1)
+echo $LAST_METRICS_SESSION_FILE
+}
+
+
 Check_jdk() {
 if [ ! -z $JDK_HOME -a -d $JDK_HOME ]
   then echo "$(Color BOLD)$(Color GREEN)OK$(Color)"
@@ -194,6 +281,65 @@ if [ ! -z $ORACLE_HOME -a -x $ORACLE_HOME/bin/ldapsearch -a -f $ORACLE_HOME/netw
   else echo -e "$(Color BOLD)$(Color YELLOW)NON$(Color)"
 fi
 }
+
+
+Check_high_cpu_thread() {
+THREAD_OUTPUT_FILE=$INSTALL_DIR/tmp_dir/TOMCAT_threads.tmp
+top -b -n 1 -H -p $(Pid) | tail -n +8 | awk '{print $1" "$9}' | sed -e "s/,/ /g" | awk '{print $1" "$2}' > $THREAD_OUTPUT_FILE
+
+
+LAST_HEAP_DUMP=$( find $LOG_DIR/server/appli -mtime -1 -type f -name cron_print_object_summary.$(Instance)*.log -exec ls -rt  {} \; | tail -1)
+    echo ""
+    #echo -e "Tomcat instance thread PID is over 1% CPU utilization, check heapdump file to find code by hexadecimal nid"
+    echo -e "$(Color BOLD)Thread(s)$(Color)\t\tPID\t\t\tHEX PID\t\t$(Color)"
+    echo -e "$(Color BOLD)Consommateur(s) en CPU$(Color)\t---\t\t\t-------\t\t$(Color)"
+
+for PID in $(cat $THREAD_OUTPUT_FILE | awk '{print $1}')
+do 
+  ## Affiche une alerte pour tout Child PID superieur a 1% de CPU
+  if [ $(grep $PID $THREAD_OUTPUT_FILE| awk '{print $2}') -gt 1 ]
+  then
+    # Conversion du PID de decimal vers hexadecimal  
+    HEX_PID=$(printf '%x\n' $PID)
+    echo -e "\t\t\t$PID\t\t==>\t$HEX_PID"
+    #echo -e "Tomcat instance thread PID $(Color RED)$PID --> $HEX_PID$(Hex PID)(Color) is over 1% CPU utilization, check heapdump file to find code by hexadecimal nid"
+    # Recherche du nid dans le heapdump si present
+    grep $HEX_PID $LAST_HEAP_DUMP 
+  fi
+done 
+}
+
+Check_adp_heap_classes_size() {
+if [[ $(Check_jvm_heapdump_cron_status) == "OK" ]]
+  then
+    #LAST_HEAP_DUMP=$( find $LOG_DIR/server/appli -maxdepth 1 -mtime -1 -type f -name cron_print_object_summary.$(Instance)*.log -exec ls -rt  {} \; | tail -1)
+    ADP_HEAP_CLASSES=$(cat $(Check_last_heapdump_cron) | grep com.adp | awk '{ SUM += $3} END { print SUM / 1024 / 1024 }'| awk '{$1=$1}1' FS=. OFS=, |  sed -e "s/,/ /g" | awk '{print $1}' )
+    echo -e "$(Color BLUE)$(Color UNDERL)$ADP_HEAP_CLASSES$(Color)"
+fi
+}
+
+Check_nonadp_heap_classes_size() {
+if [[ $(Check_jvm_heapdump_cron_status) == "OK" ]]
+  then
+    LAST_HEAP_DUMP=$( find $LOG_DIR/server/appli -maxdepth 1 -mtime -1 -type f -name cron_print_object_summary.$(Instance)*.log -exec ls -rt  {} \; | tail -1)
+   # NON_ADP_HEAP_CLASSES=$(cat $LAST_HEAP_DUMP | grep -v com.adp.fr | awk '{ SUM += $3} END { print SUM / 1024 / 1024 }' | sed -e "s/./ /g" | awk '{print $1}')
+    NON_ADP_HEAP_CLASSES=$(cat $LAST_HEAP_DUMP | grep -v com.adp | awk '{ SUM += $3} END { print SUM / 1024 / 1024 }' | awk '{$1=$1}1' FS=. OFS=, |  sed -e "s/,/ /g" | awk '{print $1}' )
+    echo -e "$(Color BLUE)$(Color UNDERL)$NON_ADP_HEAP_CLASSES$(Color)"
+fi
+}
+
+Check_adp_heap_classes_instances_nb() {
+if [[ $(Check_jvm_heapdump_cron_status) == "OK" ]]
+  then 
+    LAST_HEAP_DUMP=$(find $LOG_DIR/server/appli -maxdepth 1 -mtime -1 -type f -name cron_print_object_summary.$(Instance)*.log -exec ls -rt  {} \; | tail -1)
+    ADP_HEAP_CLASSES=$(cat $LAST_HEAP_DUMP | grep -v com.adp.fr | awk '{ SUM += $3} END { print SUM }')
+    echo -e "$(Color BLUE)$(Color UNDERL)$ADP_HEAP_CLASSES$(Color)"
+fi
+}
+
+
+
+
 
 Check_dida_jdbc_info() {
 APPLICATION_PROPERTIES="$CATALINA_BASE/conf/gamma/etc/application.properties"
@@ -268,13 +414,13 @@ Jvm_heap_memory() {
 if [[ $(Check_jmx4perl) == *OK* ]]
   then 
     HEAP_MEMORY=$((`/usr/bin/jmx4perl http://localhost:$(Port_http)/j4p --product tomcat read "java.lang:type=Memory" HeapMemoryUsage used` / 1024 / 1024 ))
-    echo $(Color WHITE)$(Color BOLD)$(Color UNDERL)$HEAP_MEMORY$(Color) Mo
+    echo $HEAP_MEMORY
   else
   if [[ $(Check_jstat) == *OK* ]]
     then 
       HEAP_MEMORY=$( ($JDK_HOME/bin/jstat -gc $(Pid) 2>/dev/null || echo "0 0 0 0 0 0 0 0 0") | tail -n 1 | awk '{split($0,a," "); sum=a[3]+a[4]+a[6]+a[8]; print sum/1024}' ) 2>/dev/null
       HEAP_MEMORY=${HEAP_MEMORY%.*}
-      echo -e $(Color BOLD)$HEAP_MEMORY Mo$(Color)
+      echo $HEAP_MEMORY 
     else
       echo -e $(Color BOLD)$(Color YELLOW)No JDK$(Color)
   fi
@@ -286,13 +432,63 @@ Jvm_max_heap_memory() {
 if [[ $(Check_jmx4perl) == *OK* ]]
   then
     HEAP_MEMORY=$((`/usr/bin/jmx4perl http://localhost:$(Port_http)/j4p --product tomcat read "java.lang:type=Memory" HeapMemoryUsage max` / 1024 / 1024 ))
-    echo $(Color WHITE)$(Color BOLD)$(Color UNDERL)$HEAP_MEMORY$(Color) Mo
+    echo $HEAP_MEMORY
   else
     echo -e $(Color BOLD)$(Color YELLOW)No JMX$(Color)
 fi
 }
 
+Jvm_max_heap_memory_session() {
+HEAP_MEMORY_MAX_SESSION=$(cat $(Check_last_metrics_session_file) | tail -n +3 | awk '{print $3}' | sort -r | head -n1) 
+#if [[ $(Jvm_heap_memory) -lt $HEAP_MEMORY_MAX_SESSION ]]
+#  then 
+    echo $HEAP_MEMORY_MAX_SESSION
+#  else 
+    #echo $(Jvm_heap_memory) 
+#    echo $HEAP_MEMORY
+#fi
+}
 
+Session_max_active_count_session() {
+MAX_ACTIVE_SESSION_SESSION=$(cat $(Check_last_metrics_session_file) | tail -n +3 | awk '{print $9}' | sort -r | head -n1)
+echo $MAX_ACTIVE_SESSION_SESSION
+}
+
+Current_threads_max_session() {
+THREADS_MAX_SESSION=$(cat $(Check_last_metrics_session_file) | tail -n +3 | awk '{print $2}' | sort -r | head -n1)
+echo $THREADS_MAX_SESSION
+}
+
+Jvm_cpu_use_max_session() {
+JVM_CPU_MAX_SESSION=$(cat $(Check_last_metrics_session_file) | tail -n +3 | awk '{print $5" "$6}' | sort -r | head -n1)
+echo $JVM_CPU_MAX_SESSION
+}
+
+Jvm_ram_memory_max_session() {
+JVM_RAM_MAX_SESSION=$(cat $(Check_last_metrics_session_file) | tail -n +3 | awk '{print $7" "$8}' | sort -r | head -n1)
+echo $JVM_RAM_MAX_SESSION
+}
+
+Avg_process_time_max_session() {
+AVG_PROCESS_TIME_MAX_SESSION=$(cat $(Check_last_metrics_session_file) | tail -n +3 | awk '{print $11" "$12}' | sort -r | head -n1)
+echo $AVG_PROCESS_TIME_MAX_SESSION
+} 
+
+Thread_pool_buzyness_max_session() {
+THREAD_POOL_BUSYNESS_MAX_SESSION=$(cat $(Check_last_metrics_session_file) | tail -n +3 | awk '{print $13" / "$15}' | sort -r | head -n1)
+echo $THREAD_POOL_BUSYNESS_MAX_SESSION
+}
+
+Error_average_max_session() {
+ERROR_AVERAGE_MAX_SESSION=$(cat $(Check_last_metrics_session_file) | tail -n +3 | awk '{print $16" %"}' | sort -r | head -n1)
+echo $ERROR_AVERAGE_MAX_SESSION
+}
+
+Jdbc_count_max_session() {
+JDBC_COUNT_MAX_SESSION=$(cat $(Check_last_metrics_session_file) | tail -n +3 | awk '{print $20}' | sort -r | head -n1)
+echo $JDBC_COUNT_MAX_SESSION
+
+}
 
 Jvm_ram_memory() {
 RAM_MEMORY=$(( ` cut -d' ' -f2 <<<cat /proc/$(Pid)/statm 2>/dev/null || echo "0" ` / 1024 ))
@@ -308,6 +504,33 @@ if [[ $CPU_USE -lt 10 ]]
   else
     echo $(Color BOLD)$(Color RED)$CPU_USE %$(Color)
 fi
+}
+
+Self_cpu_use() {
+CPU_USE=$( ps -p $1 -o %cpu 2>/dev/null | tail -n 1  )
+CPU_USE=${CPU_USE%.*}
+if [[ $CPU_USE -lt 10 ]]
+  then
+    echo $(Color BOLD)$(Color GREEN)$CPU_USE %$(Color)
+  else
+    echo $(Color BOLD)$(Color RED)$CPU_USE %$(Color)
+fi
+
+}
+
+Self_ram_memory() {
+RAM_MEMORY=$(( ` cut -d' ' -f2 <<<cat /proc/$1/statm 2>/dev/null || echo "0" ` / 1024 ))
+if [[ $RAM_MEMORY -lt 10 ]]
+  then
+    echo $(Color BOLD)$(Color GREEN)$RAM_MEMORY Mo$(Color)
+  else
+    echo $(Color BOLD)$(Color RED)$RAM_MEMORY Mo$(Color)
+fi
+}
+
+Self_info() {
+echo ""
+echo -e "$(Color BOLD)$(Color WHITE)CPU Used:$(Color)\t$(Self_cpu_use $1)\t$(Color BOLD)$(Color WHITE)RAM Used:$(Color)\t$(Self_ram_memory $1)$(Color)"
 }
 
 Session_active_count() {
@@ -546,7 +769,7 @@ if [ -z $CATALINA_BASE -o -z $LOG_DIR ]
     exit 1;
   else
    echo "Suppression et nombre de fichiers supprimes:"
-   for i in $CATALINA_BASE/logs $CATALINA_BASE/webapps/gamma/WEB-INF/logs $LOG_DIR
+   for i in $CATALINA_BASE/logs $CATALINA_BASE/webapps/gamma/WEB-INF/logs $LOG_DIR  
    do 
     printf "* $i: " 
     printf $(find $i -type f -name "*.log" -print -delete | wc -l)
@@ -570,8 +793,50 @@ echo $INSTALL_DIR/heapdump ; rm -rf $INSTALL_DIR/heapdump/*
 echo $INSTALL_DIR/heapdump_error ; rm -rf $INSTALL_DIR/heapdump/*
 }
 
+Purge_metrics() {
+echo Purge des metriques
+if [ -z $INSTALL_DIR -o ! -d $INSTALL_DIR/tmp_dir ]
+  then
+   echo "Une des variables nécessaires n'est pas definies"
+    exit 1;
+  else
+   echo "Suppression et nombre de fichiers supprimes:"
+   for i in $INSTALL_DIR/tmp_dir 
+   do
+    printf "* csv sous $i: "
+    printf $(find $i -type f -name "*.csv" -print -delete | wc -l)
+    if [ ${PIPESTATUS[0]} -eq 0 ]
+      then echo -e "$(Color GREEN)\tOK$(Color)"
+      else echo -e "$(Color RED)\tKO$(Color)"
+    fi
+   done
+   for i in $INSTALL_DIR/tmp_dir
+   do
+    printf "* json sous $i: "
+    printf $(find $i -type f -name "*.json" -print -delete | wc -l)
+    if [ ${PIPESTATUS[0]} -eq 0 ]
+      then echo -e "$(Color GREEN)\tOK$(Color)"
+      else echo -e "$(Color RED)\tKO$(Color)"
+    fi
+   done
+   for i in $INSTALL_DIR/tmp_dir
+   do
+    printf "* *tmp* sous $i: "
+    printf $(find $i -type f -name "*.tmp*" -print -delete | wc -l)
+    if [ ${PIPESTATUS[0]} -eq 0 ]
+      then echo -e "$(Color GREEN)\tOK$(Color)"
+      else echo -e "$(Color RED)\tKO$(Color)"
+    fi
+   done
+
+fi
+
+}
+
+
+
 help() {
-echo "Usage: start | stop | status | restart | restart_failure | purge_logs | purge_cache | purge_all | stats | diags"
+echo "Usage: start | stop | status | restart | restart_failure | purge_logs | purge_cache | purge_all | purge_metrics | stats | diags <TIMER (secs)> <Metrics Output format (csv or json)>"
 }
 
 alert() {
@@ -598,11 +863,12 @@ if [ "$PORT" == "1414" ]
   then TYPE="MQ"
 fi
 
-
-echo -e "$(Color WHITE)\t\t\tLOCALHOST$(Color)\t==>\t$DEST\t$PORT\t$TYPE\t$COUNT\t$FQDN"
+echo -e "$(Color WHITE)\t\t\tLOCALHOST$(Color)\t==>\t$DEST\t$PORT\t$TYPE\t$COUNT\t$FQDN" | tee -a $OUTPUT_FILE.tmp2
 TYPE=
 done <<< "$(netstat -aopn 2>/dev/null | grep $(Pid) | grep tcp | grep -v LISTEN | awk {'print $5'} | sed -e "s/:/ /g" | sort | uniq -c)"
+cat $OUTPUT_FILE.tmp2 | grep JDBC | awk '{print $7}' | paste -sd+ - | bc >$OUTPUT_FILE.tmp3
 
+Check_output $1 $2 $3 >/dev/null
 echo ""
 echo -e "$(Color BOLD)Ports Ouverts$(Color)\t\tSOURCE\t\t\tPORT\t\tINTERFACE\tTYPE$(Color)"
 echo -e "$(Color BOLD)(OS)\t\t\t------\t\t\t----\t\t---------\t----$(Color)"
@@ -637,10 +903,11 @@ if [ "$PORT" == "$(Port_shutdown)" ]
 fi
 
 
-
-echo -e "$(Color WHITE)\t\t\t$SOURCE$(Color)\t\t==>\t$PORT\t\t$INTERFACE\t\t$TYPE\t"
+echo -e "$(Color WHITE)\t\t\t$SOURCE$(Color)\t\t==>\t$PORT\t\t$INTERFACE\t\t$TYPE\t" 
 TYPE=
 done <<< "$(netstat -aopn 2>/dev/null | grep $(Pid) | grep tcp | grep LISTEN | awk {'print $4" "$5'} | sed -e "s/:/ /g")" 
+
+
 #echo -e "netstat -aopn 2>/dev/null | grep $(Pid) | grep tcp | grep LISTEN | awk {'print $4" "$5'} | sed -e "s/:/ /g""
 }
 
@@ -664,24 +931,37 @@ if [ -z $TIMER -o "$TIMER" == "x" -o $(echo "$1" | grep -qE '^[0-9]+$'; echo $?)
   else TIMER="$1"
 fi
 
-Instance_Info $TIMER
-if [ $TIMER -ne 0 2>/dev/null ] 
+METRICS=$2
+METRICS=x$2
+#if [ -z "$METRICS" -o "$METRICS" == "x" -o $(echo "$2" | grep "csv\|json"; echo $?) -ne "0" ]
+if [ -z "$METRICS" ] || [ "$METRICS" == "x" ] || [ "$(echo "$2" | grep "csv\|json" 1>/dev/null; echo $?)" -ne "0" ]
+#if [ -z $METRICS -o "$METRICS" == "x" ]
+  then METRICS="NON"
+  else METRICS=$2
+fi
+
+
+Instance_Info $TIMER $METRICS
+if [ $TIMER -ne 0  2>/dev/null ] 
   then 
     while true   
       do
-      Instance_info_dynamic
-      Net_threads
+      Instance_info_dynamic $TIMER $METRICS $INCR
+      Net_threads $TIMER $METRICS $INCR
       Db_sessions
+      Check_high_cpu_thread
+      Self_info $$
       sleep $TIMER
       tput rc
-     #tput cup 14 0 
-     tput ed
+      tput ed
     done
   else 
       TIMER="NON"
+      METRICS="NON"
       Instance_info_dynamic   
       Net_threads
       Db_sessions
+      Check_high_cpu_thread
 fi 
 
 
@@ -714,16 +994,20 @@ purge_logs)
 purge_cache)
   purge_cache
 ;;
+purge_metrics)
+  Purge_metrics
+;;
 purge_all)
   purge_logs
   purge_cache
   purge_heapdump
+  Purge_metrics
 ;;
 stats)
   Net_threads
 ;;
 diags)
-  Diags $2
+  Diags $2 $3
 ;;
 *)
   help
