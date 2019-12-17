@@ -29,6 +29,10 @@ if [ -z  $1 ]
       echo -e "\e[1m";;
     UNDERL)
       echo -e "\e[4m";;
+    BLUEUNDERL)
+      echo -e "\e[4m\e[44m";;
+    WHITEUNDERL)
+      echo -e "\e[4m\e[107m\e[30m";;
   esac
 fi
 }
@@ -105,7 +109,7 @@ if  [  -n "$(Pid)" ]
   then
     echo -e "\t$(Color BOLD)Threads\tHeap\tJVM \tRam   \tSession\tRequest\tProcess\tThread \tAvg   \tADP    \tNon-ADP\tJDBC $(Color)"
     echo -e "\t$(Color BOLD)OS     \tSize\tCPU \tMemory\tActive \tCount  \tTimeAvg\tPool   \tError \tClasses\tClasses\tCount$(Color)"
-    echo -e "\t$(Color BOLD)       \t    \t    \t      \tCount  \t       \t       \tCur/Mx \tRate  \tSize Mb\tSize Mb\t$(Color)"
+    echo -e "\t$(Color BOLD)       \t    \t%   \t      \tCount  \t       \t       \tCur/Mx \tRate  \tSize Mb\tSize Mb\t$(Color)"
     echo -e "\t$(Color BOLD)-------\t----\t ---\t------\t-------\t-------\t-------\t-------\t------\t-------\t-------\t-----$(Color)"
     echo -e "$(Color BOLD)Actuel:\t$(Current_threads)\t$(Jvm_heap_memory)\t$(Jvm_cpu_use)\t$(Jvm_ram_memory)\t$(Session_active_count)\t$(Request_count)\t$(Avg_process_time)\t$(Thread_pool_buzyness)\t$(Error_average)\t$(Check_adp_heap_classes_size)\t$(Check_nonadp_heap_classes_size)$(Color)" | tee -a $OUTPUT_FILE.tmp
     echo -e "$(Color BOLD)Max:\t-----\t$(Jvm_max_heap_memory)\t-----\t-----\t$(Session_max_active_count)\t-------\t-------\t-------\t-------\t-------\t-------$(Color)"
@@ -235,7 +239,8 @@ fi
 
 Check_jvm_heapdump_last_cron_date() {
 #LAST_HEAP_DUMP=$(find $LOG_DIR/server/appli -maxdepth 1 -mtime -1 -type f -name cron_print_object_summary.$(Instance)*.log -exec ls -rt  {} \; | tail -1)
-LAST_HEAP_DUMP_DATE=$( find $LOG_DIR/server/appli -maxdepth 1 -mtime -1 -type f -name cron_print_object_summary.$(Instance)*.log -exec ls -lrt  {} \; | tail -1 | awk '{print $8}')
+#LAST_HEAP_DUMP_DATE=$( find $LOG_DIR/server/appli -maxdepth 1 -mtime -1 -type f -name cron_print_object_summary.$(Instance)*.log -exec ls -lrt  {} \; | tail -1 | awk '{print $8}')
+LAST_HEAP_DUMP_DATE=$(ls -t $LOG_DIR/server/appli/cron_print_object_summary.$(Instance)*.log | head -1 | sed -e "s#.*$(Instance)-*\(\)#\1#"  )
 if [ ! -z $LOG_DIR -a ! -z "$LAST_HEAP_DUMP_DATE" ]
   then echo $LAST_HEAP_DUMP_DATE
   else echo "NON"
@@ -251,7 +256,8 @@ fi
 
 
 Check_last_heapdump_cron() {
-LAST_HEAP_DUMP=$(find $LOG_DIR/server/appli -maxdepth 1 -mtime -1 -type f -name cron_print_object_summary.$(Instance)*.log -exec ls -rt  {} \; | tail -1)
+#LAST_HEAP_DUMP=$(find $LOG_DIR/server/appli -maxdepth 1 -mtime -1 -type f -name cron_print_object_summary.$(Instance)*.log -exec ls -rt  {} \; | tail -1)
+LAST_HEAP_DUMP=$(ls -t $LOG_DIR/server/appli/cron_print_object_summary.$(Instance)*.log | head -1)
 echo $LAST_HEAP_DUMP
 }
 
@@ -288,7 +294,7 @@ THREAD_OUTPUT_FILE=$INSTALL_DIR/tmp_dir/TOMCAT_threads.tmp
 top -b -n 1 -H -p $(Pid) | tail -n +8 | awk '{print $1" "$9}' | sed -e "s/,/ /g" | awk '{print $1" "$2}' > $THREAD_OUTPUT_FILE
 
 
-LAST_HEAP_DUMP=$( find $LOG_DIR/server/appli -mtime -1 -type f -name cron_print_object_summary.$(Instance)*.log -exec ls -rt  {} \; | tail -1)
+LAST_HEAP_DUMP=$( ls -t $LOG_DIR/server/appli/threaddump.$(Instance)*.log | head -1)
     echo ""
     #echo -e "Tomcat instance thread PID is over 1% CPU utilization, check heapdump file to find code by hexadecimal nid"
     echo -e "$(Color BOLD)Thread(s)$(Color)\t\tPID\t\t\tHEX PID\t\t$(Color)"
@@ -321,7 +327,7 @@ fi
 Check_nonadp_heap_classes_size() {
 if [[ $(Check_jvm_heapdump_cron_status) == "OK" ]]
   then
-    LAST_HEAP_DUMP=$( find $LOG_DIR/server/appli -maxdepth 1 -mtime -1 -type f -name cron_print_object_summary.$(Instance)*.log -exec ls -rt  {} \; | tail -1)
+    LAST_HEAP_DUMP=$(ls -t $LOG_DIR/server/appli/cron_print_object_summary.$(Instance)*.log | head -1 )
    # NON_ADP_HEAP_CLASSES=$(cat $LAST_HEAP_DUMP | grep -v com.adp.fr | awk '{ SUM += $3} END { print SUM / 1024 / 1024 }' | sed -e "s/./ /g" | awk '{print $1}')
     NON_ADP_HEAP_CLASSES=$(cat $LAST_HEAP_DUMP | grep -v com.adp | awk '{ SUM += $3} END { print SUM / 1024 / 1024 }' | awk '{$1=$1}1' FS=. OFS=, |  sed -e "s/,/ /g" | awk '{print $1}' )
     echo -e "$(Color BLUE)$(Color UNDERL)$NON_ADP_HEAP_CLASSES$(Color)"
@@ -331,7 +337,7 @@ fi
 Check_adp_heap_classes_instances_nb() {
 if [[ $(Check_jvm_heapdump_cron_status) == "OK" ]]
   then 
-    LAST_HEAP_DUMP=$(find $LOG_DIR/server/appli -maxdepth 1 -mtime -1 -type f -name cron_print_object_summary.$(Instance)*.log -exec ls -rt  {} \; | tail -1)
+    LAST_HEAP_DUMP=$(ls -t $LOG_DIR/server/appli/cron_print_object_summary.$(Instance)*.log | head -1)
     ADP_HEAP_CLASSES=$(cat $LAST_HEAP_DUMP | grep -v com.adp.fr | awk '{ SUM += $3} END { print SUM }')
     echo -e "$(Color BLUE)$(Color UNDERL)$ADP_HEAP_CLASSES$(Color)"
 fi
@@ -427,6 +433,36 @@ if [[ $(Check_jmx4perl) == *OK* ]]
 fi
 }
 
+Check_kernel_net.core.maxconn() {
+KERNEL_MAXCONN=$(sysctl -n net.core.somaxconn)
+echo $KERNEL_MAXCONN
+}
+
+Check_kernel_net.core.netdev_max_backlog() {
+KERNEL_NETDEV_MAXBACKLOG=$(sysctl -n net.core.netdev_max_backlog)
+echo $KERNEL_NETDEV_MAXBACKLOG
+}
+
+Check_kernel_net.ipv4.tcp_syncookies() {
+KERNEL_SYNCOOKIES=$(sysctl -n net.ipv4.tcp_syncookies)
+echo $KERNEL_SYNCOOKIES
+}
+
+Check_kernel_net.ipv4.tcp_max_syn_backlog() {
+KERNEL_MAXSYNBACKLOG=$(sysctl -n net.ipv4.tcp_max_syn_backlog)
+echo $KERNEL_MAXSYNBACKLOG
+}
+
+Check_kernel_net.ipv4.tcp_keepalive_time() {
+KERNEL_TCPKEEPALIVE=$(sysctl -n net.ipv4.tcp_keepalive_time)
+echo $KERNEL_TCPKEEPALIVE
+}
+
+Check_kernel_net.ipv4.tcp_mtu_probing() {
+KERNEL_TCPMTUPROBING=$(sysctl -n net.ipv4.tcp_mtu_probing)
+echo $KERNEL_TCPMTUPROBING
+}
+
 
 Jvm_max_heap_memory() {
 if [[ $(Check_jmx4perl) == *OK* ]]
@@ -437,6 +473,164 @@ if [[ $(Check_jmx4perl) == *OK* ]]
     echo -e $(Color BOLD)$(Color YELLOW)No JMX$(Color)
 fi
 }
+
+Check_jmx4perl_tomcat_server_address() {
+if [[ $(Check_jmx4perl) == *OK* ]]
+  then
+    SERVER_ADDRESS=$(/usr/bin/jmx4perl http://localhost:$(Port_http)/j4p --product tomcat read "Catalina:type=Server" address )
+    echo $SERVER_ADDRESS
+  else
+    echo -e $(Color BOLD)$(Color YELLOW)No JMX$(Color)
+fi
+}
+
+Check_jmx4perl_tomcat_server_shutdown_port() {
+if [[ $(Check_jmx4perl) == *OK* ]]
+  then
+    SHUTDOWN_PORT=$(/usr/bin/jmx4perl http://localhost:$(Port_http)/j4p --product tomcat read "Catalina:type=Server" port )
+    echo $SHUTDOWN_PORT
+  else
+    echo -e $(Color BOLD)$(Color YELLOW)No JMX$(Color)
+fi
+}
+
+Check_jmx4perl_tomcat_server_version() {
+if [[ $(Check_jmx4perl) == *OK* ]]
+  then
+    SERVER_VERSION=$(/usr/bin/jmx4perl http://localhost:$(Port_http)/j4p --product tomcat read "Catalina:type=Server" serverNumber )
+    echo $SERVER_VERSION
+  else
+    echo -e $(Color BOLD)$(Color YELLOW)No JMX$(Color)
+fi
+}
+
+
+Check_jmx4perl_tomcat_service_name() {
+if [[ $(Check_jmx4perl) == *OK* ]]
+  then
+    SERVICE_NAME=$(/usr/bin/jmx4perl http://localhost:$(Port_http)/j4p --product tomcat read "Catalina:type=Service" name )
+    echo $SERVICE_NAME
+  else
+    echo -e $(Color BOLD)$(Color YELLOW)No JMX$(Color)
+fi
+}
+
+Check_jmx4perl_tomcat_engine_name() {
+if [[ $(Check_jmx4perl) == *OK* ]]
+  then
+    ENGINE_NAME=$(/usr/bin/jmx4perl http://localhost:$(Port_http)/j4p --product tomcat read "Catalina:type=Engine" name )
+    echo $ENGINE_NAME
+  else
+    echo -e $(Color BOLD)$(Color YELLOW)No JMX$(Color)
+fi
+}
+
+Check_jmx4perl_tomcat_service_connector_name() {
+if [[ $(Check_jmx4perl) == *OK* ]]
+  then
+    SERVICE_CONNECTOR=$(/usr/bin/jmx4perl http://localhost:$(Port_http)/j4p --product tomcat read "Catalina:type=Service" connectorNames | sed -e "s#.*port=*\(\)#\1#"| grep -o -E '[0-9]+')
+    echo $SERVICE_CONNECTOR
+  else
+    echo -e $(Color BOLD)$(Color YELLOW)No JMX$(Color)
+fi
+}
+
+Check_jmx4perl_tomcat_connector_connection_timeout() {
+if [[ $(Check_jmx4perl) == *OK* ]]
+  then
+    CONNECTION_TIMEOUT=$(/usr/bin/jmx4perl http://localhost:$(Port_http)/j4p --product tomcat read "Catalina:type=Connector,port=$(Check_jmx4perl_tomcat_service_connector_name)" connectionTimeout )
+    echo $CONNECTION_TIMEOUT / 1000 | bc
+  else
+    echo -e $(Color BOLD)$(Color YELLOW)No JMX$(Color)
+fi
+}
+
+Check_jmx4perl_tomcat_connector_keepalive_timeout() {
+if [[ $(Check_jmx4perl) == *OK* ]]
+  then
+    KEEPALIVE_TIMEOUT=$(/usr/bin/jmx4perl http://localhost:$(Port_http)/j4p --product tomcat read "Catalina:type=Connector,port=$(Check_jmx4perl_tomcat_service_connector_name)" keepAliveTimeout )
+    echo $KEEPALIVE_TIMEOUT / 1000 | bc
+  else
+    echo -e $(Color BOLD)$(Color YELLOW)No JMX$(Color)
+fi
+}
+
+
+
+Check_jmx4perl_tomcat_connector_acceptCount() {
+if [[ $(Check_jmx4perl) == *OK* ]]
+  then
+    CONNECTOR_ACCEPT_COUNT=$(/usr/bin/jmx4perl http://localhost:$(Port_http)/j4p --product tomcat read "Catalina:type=Connector,port=$(Check_jmx4perl_tomcat_service_connector_name)" acceptCount )
+    echo $CONNECTOR_ACCEPT_COUNT
+  else
+    echo -e $(Color BOLD)$(Color YELLOW)No JMX$(Color)
+fi
+}
+
+Check_jmx4perl_tomcat_connector_maxThreads() {
+if [[ $(Check_jmx4perl) == *OK* ]]
+  then
+    CONNECTOR_ACCEPT_COUNT=$(/usr/bin/jmx4perl http://localhost:$(Port_http)/j4p --product tomcat read "Catalina:type=Connector,port=$(Check_jmx4perl_tomcat_service_connector_name)" maxThreads )
+    echo $CONNECTOR_ACCEPT_COUNT
+  else
+    echo -e $(Color BOLD)$(Color YELLOW)No JMX$(Color)
+fi
+}
+
+Check_jmx4perl_tomcat_threapool_current_threads() {
+if [[ $(Check_jmx4perl) == *OK* ]]
+  then
+    CURRENT_THREADS=$(/usr/bin/jmx4perl http://localhost:$(Port_http)/j4p --product tomcat read Catalina:type=ThreadPool,name=\"http-nio2-$(Check_jmx4perl_tomcat_service_connector_name)\" currentThreadCount )
+    echo $CURRENT_THREADS
+  else
+    echo -e $(Color BOLD)$(Color YELLOW)No JMX$(Color)
+fi
+}
+
+Check_jmx4perl_tomcat_threapool_current_threads_buzy() {
+if [[ $(Check_jmx4perl) == *OK* ]]
+  then
+    CURRENT_THREADS_BUSY=$(/usr/bin/jmx4perl http://localhost:$(Port_http)/j4p --product tomcat read Catalina:type=ThreadPool,name=\"http-nio2-$(Check_jmx4perl_tomcat_service_connector_name)\" currentThreadsBusy )
+    echo $CURRENT_THREADS_BUSY
+  else
+    echo -e $(Color BOLD)$(Color YELLOW)No JMX$(Color)
+fi
+}
+
+Check_jmx4perl_tomcat_threapool_acceptor_current_threads() {
+if [[ $(Check_jmx4perl) == *OK* ]]
+  then
+    ACCEPTOR_CURRENT_THREADS=$(/usr/bin/jmx4perl http://localhost:$(Port_http)/j4p --product tomcat read Catalina:type=ThreadPool,name=\"http-nio2-$(Check_jmx4perl_tomcat_service_connector_name)\" acceptorThreadCount )
+    echo $ACCEPTOR_CURRENT_THREADS
+  else
+    echo -e $(Color BOLD)$(Color YELLOW)No JMX$(Color)
+fi
+}
+
+Check_jmx4perl_tomcat_threapool_free_threads() {
+if [[ $(Check_jmx4perl) == *OK* ]]
+  then
+    CURRENT_THREADS=$(/usr/bin/jmx4perl http://localhost:$(Port_http)/j4p --product tomcat read Catalina:type=ThreadPool,name=\"http-nio2-$(Check_jmx4perl_tomcat_service_connector_name)\" currentThreadCount )
+    CURRENT_THREADS_BUSY=$(/usr/bin/jmx4perl http://localhost:$(Port_http)/j4p --product tomcat read Catalina:type=ThreadPool,name=\"http-nio2-$(Check_jmx4perl_tomcat_service_connector_name)\" currentThreadsBusy )
+    CURRENT_FREE_THREADS=$(( CURRENT_THREADS - CURRENT_THREADS_BUSY ))
+    echo $CURRENT_FREE_THREADS
+  else
+    echo -e $(Color BOLD)$(Color YELLOW)No JMX$(Color)
+fi
+}
+
+
+Check_jmx4perl_tomcat_connector_protocol() {
+if [[ $(Check_jmx4perl) == *OK* ]]
+  then
+    CONNECTOR_PROTOCOL=$(/usr/bin/jmx4perl http://localhost:$(Port_http)/j4p --product tomcat read "Catalina:type=Connector,port=$(Check_jmx4perl_tomcat_service_connector_name)" protocol | sed -e "s#.*org.apache.coyote.http11.Http11*\(\)#\1#" | sed -e "s/Protocol//g" )
+    echo $CONNECTOR_PROTOCOL
+  else
+    echo -e $(Color BOLD)$(Color YELLOW)No JMX$(Color)
+fi
+}
+
+
 
 Jvm_max_heap_memory_session() {
 HEAP_MEMORY_MAX_SESSION=$(cat $(Check_last_metrics_session_file) | tail -n +3 | awk '{print $3}' | sort -r | head -n1) 
@@ -449,8 +643,50 @@ HEAP_MEMORY_MAX_SESSION=$(cat $(Check_last_metrics_session_file) | tail -n +3 | 
 #fi
 }
 
+Check_jmx4perl_tomcat_jvm_maxfiledescriptor() {
+if [[ $(Check_jmx4perl) == *OK* ]]
+  then
+    JVM_MAXFILEDESCRIPTOR=$(/usr/bin/jmx4perl http://localhost:$(Port_http)/j4p --product tomcat read "java.lang:type=OperatingSystem" MaxFileDescriptorCount )
+    echo $JVM_MAXFILEDESCRIPTOR
+  else
+    echo -e $(Color BOLD)$(Color YELLOW)No JMX$(Color)
+fi
+}
+
+Check_jmx4perl_tomcat_jvm_currentfiledescriptor() {
+if [[ $(Check_jmx4perl) == *OK* ]]
+  then
+    JVM_CURRENT_FILEDESCRIPTOR=$(/usr/bin/jmx4perl http://localhost:$(Port_http)/j4p --product tomcat read "java.lang:type=OperatingSystem" OpenFileDescriptorCount )
+    echo $JVM_CURRENT_FILEDESCRIPTOR
+  else
+    echo -e $(Color BOLD)$(Color YELLOW)No JMX$(Color)
+fi
+}
+
+Check_jmx4perl_tomcat_jdbc_pool_count_bdz2x() {
+if [[ $(Check_jmx4perl) == *OK* ]]
+  then
+    JDBC_POOL_BDZ2X=$(/usr/bin/jmx4perl http://localhost:$(Port_http)/j4p --product tomcat read "tomcat.jdbc:name=Tomcat Connection Pool[*],type=ConnectionPool,class=org.apache.tomcat.jdbc.pool.DataSource" PoolName| grep PoolName | grep "BDZ2X" | wc -l )
+    echo $JDBC_POOL_BDZ2X
+  else
+    echo -e $(Color BOLD)$(Color YELLOW)No JMX$(Color)
+fi
+}
+
+Check_jmx4perl_tomcat_jdbc_pool_count_non_bdz2x() {
+if [[ $(Check_jmx4perl) == *OK* ]]
+  then
+    JDBC_POOL_BDZ2X=$(/usr/bin/jmx4perl http://localhost:$(Port_http)/j4p --product tomcat read "tomcat.jdbc:name=Tomcat Connection Pool[*],type=ConnectionPool,class=org.apache.tomcat.jdbc.pool.DataSource" PoolName | grep PoolName | grep -v "BDZ2X" | wc -l )
+    echo $JDBC_POOL_BDZ2X
+  else
+    echo -e $(Color BOLD)$(Color YELLOW)No JMX$(Color)
+fi
+}
+
+
+
 Session_max_active_count_session() {
-MAX_ACTIVE_SESSION_SESSION=$(cat $(Check_last_metrics_session_file) | tail -n +3 | awk '{print $9}' | sort -r | head -n1)
+MAX_ACTIVE_SESSION_SESSION=$(cat $(Check_last_metrics_session_file) | tail -n +3 | awk '{print $8}' | sort -r | head -n1)
 echo $MAX_ACTIVE_SESSION_SESSION
 }
 
@@ -460,27 +696,27 @@ echo $THREADS_MAX_SESSION
 }
 
 Jvm_cpu_use_max_session() {
-JVM_CPU_MAX_SESSION=$(cat $(Check_last_metrics_session_file) | tail -n +3 | awk '{print $5" "$6}' | sort -r | head -n1)
+JVM_CPU_MAX_SESSION=$(cat $(Check_last_metrics_session_file) | tail -n +3 | awk '{print $5}' | sort -r | head -n1)
 echo $JVM_CPU_MAX_SESSION
 }
 
 Jvm_ram_memory_max_session() {
-JVM_RAM_MAX_SESSION=$(cat $(Check_last_metrics_session_file) | tail -n +3 | awk '{print $7" "$8}' | sort -r | head -n1)
+JVM_RAM_MAX_SESSION=$(cat $(Check_last_metrics_session_file) | tail -n +3 | awk '{print $6" "$7}' | sort -r | head -n1)
 echo $JVM_RAM_MAX_SESSION
 }
 
 Avg_process_time_max_session() {
-AVG_PROCESS_TIME_MAX_SESSION=$(cat $(Check_last_metrics_session_file) | tail -n +3 | awk '{print $11" "$12}' | sort -r | head -n1)
+AVG_PROCESS_TIME_MAX_SESSION=$(cat $(Check_last_metrics_session_file) | tail -n +3 | awk '{print $10" "$11}' | sort -r | head -n1)
 echo $AVG_PROCESS_TIME_MAX_SESSION
 } 
 
 Thread_pool_buzyness_max_session() {
-THREAD_POOL_BUSYNESS_MAX_SESSION=$(cat $(Check_last_metrics_session_file) | tail -n +3 | awk '{print $13" / "$15}' | sort -r | head -n1)
+THREAD_POOL_BUSYNESS_MAX_SESSION=$(cat $(Check_last_metrics_session_file) | tail -n +3 | awk '{print $12" / "$14}' | sort -r | head -n1)
 echo $THREAD_POOL_BUSYNESS_MAX_SESSION
 }
 
 Error_average_max_session() {
-ERROR_AVERAGE_MAX_SESSION=$(cat $(Check_last_metrics_session_file) | tail -n +3 | awk '{print $16" %"}' | sort -r | head -n1)
+ERROR_AVERAGE_MAX_SESSION=$(cat $(Check_last_metrics_session_file) | tail -n +3 | awk '{print $15" "$16}' | sort -r | head -n1)
 echo $ERROR_AVERAGE_MAX_SESSION
 }
 
@@ -491,7 +727,7 @@ echo $JDBC_COUNT_MAX_SESSION
 }
 
 Jvm_ram_memory() {
-RAM_MEMORY=$(( ` cut -d' ' -f2 <<<cat /proc/$(Pid)/statm 2>/dev/null || echo "0" ` / 1024 ))
+RAM_MEMORY=$((  ` cut -d' ' -f2 <<<cat /proc/$(Pid)/statm 2>/dev/null || echo "0"`   / 1024 ))
 echo $RAM_MEMORY Mo
 }
 
@@ -500,9 +736,9 @@ CPU_USE=$( ps -p $(Pid) -o %cpu 2>/dev/null | tail -n 1  )
 CPU_USE=${CPU_USE%.*}
 if [[ $CPU_USE -lt 10 ]]
   then
-    echo $(Color BOLD)$(Color GREEN)$CPU_USE %$(Color)
+    echo $(Color BOLD)$(Color GREEN)$CPU_USE$(Color)
   else
-    echo $(Color BOLD)$(Color RED)$CPU_USE %$(Color)
+    echo $(Color BOLD)$(Color RED)$CPU_USE$(Color)
 fi
 }
 
@@ -949,8 +1185,9 @@ if [ $TIMER -ne 0  2>/dev/null ]
       Instance_info_dynamic $TIMER $METRICS $INCR
       Net_threads $TIMER $METRICS $INCR
       Db_sessions
-      Check_high_cpu_thread
-      Self_info $$
+# Desactivation car prob daffichage avec tput en cas de detection de thread consommateur
+#      Check_high_cpu_thread
+#      Self_info $$
       sleep $TIMER
       tput rc
       tput ed
@@ -963,6 +1200,71 @@ if [ $TIMER -ne 0  2>/dev/null ]
       Db_sessions
       Check_high_cpu_thread
 fi 
+
+
+}
+
+
+Diagram() {
+clear
+echo ""
+echo -e "                    __$(Color BOLD)OS$(Color)_________________________________________________________________________"
+echo -e "                   |                                                                             |" 
+echo -e "                   |    __$(Color BOLD)Kernel$(Color)___________________________________________________________      |" 
+echo -e "                   |   |  kernel.sched_child_runs_first:                                   |     |" 
+echo -e "                   |   |  __$(Color BOLD)Net$(Color)__________________________________________________________  |     |" 
+echo -e "                   |   | | somaxconn: $(Color WHITE)$(Check_kernel_net.core.maxconn)$(Color)\t\tnetdev_max_backlog: $(Color WHITE)$(Check_kernel_net.core.netdev_max_backlog)$(Color)\t | |     |" 
+echo -e "                   |   | | __$(Color BOLD)TCP$(Color)________________________________________________________ | |     |" 
+echo -e "                   |   | || tcp_syncookies: $(Color WHITE)$(Check_kernel_net.ipv4.tcp_syncookies)$(Color)\t\ttcp_max_syn_backlog: $(Color WHITE)$(Check_kernel_net.ipv4.tcp_max_syn_backlog)$(Color)\t|| |     |" 
+echo -e "                   |   | || tcp_keepalive_time: $(Color WHITE)$(Check_kernel_net.ipv4.tcp_keepalive_time)s$(Color)\ttcp_mtu_probing: $(Color WHITE)$(Check_kernel_net.ipv4.tcp_mtu_probing)$(Color)\t\t|| |     |" 
+echo -e "                   |   | ||_____________________________________________________________|| |     |" 
+echo -e "                   |   | |_______________________________________________________________| |     |" 
+echo -e "                   |   |___________________________________________________________________|     |" 
+echo -e "                   |                                                                             |" 
+echo -e "                   |     __JVM_________________________________________________    |"
+echo -e "                   |    | Max File descriptor: $(Color WHITEUNDERL)$(Check_jmx4perl_tomcat_jvm_maxfiledescriptor)$(Color)\t Count: $(Color WHITEUNDERL)$(Check_jmx4perl_tomcat_jvm_currentfiledescriptor)$(Color)\t       |   |"
+echo -e "                   |    | Max File descriptor: $(Color WHITEUNDERL)$(Check_jmx4perl_tomcat_jvm_maxfiledescriptor)$(Color)\t Count: $(Color WHITEUNDERL)$(Check_jmx4perl_tomcat_jvm_currentfiledescriptor)$(Color)\t       |   |"
+echo -e "                   |    |______________________________________________________|   |"
+
+echo -e "                   |                                                                             |" 
+echo -e "__Client___        |         _$(Color BOLD)Catalina Server$(Color)_Address:$(Color WHITEUNDERL)$(Check_jmx4perl_tomcat_server_address)$(Color)_Shutdown:$(Color WHITEUNDERL)$(Check_jmx4perl_tomcat_server_shutdown_port)$(Color)_Version:$(Color WHITEUNDERL)$(Check_jmx4perl_tomcat_server_version)$(Color)__"
+echo -e "|         |        |        |                                                                   |"
+echo -e "|         |        |        |  __$(Color BOLD)Service$(Color)__Name:$(Color WHITEUNDERL)$(Check_jmx4perl_tomcat_service_name)$(Color)______________________________________   |"
+echo -e "|         |        |        | |                                                              |  |"
+echo -e "|         |        |        | |   _$(Color BOLD)Engine$(Color)__Name:$(Color WHITEUNDERL)$(Check_jmx4perl_tomcat_engine_name)$(Color)____________________________________    |"
+echo -e "|         |        |        | |  |                                                          |   |"
+echo -e "|         |        |        | | _|______________________________________________________    |   |"
+echo -e "| BROWSER |        |        | ||$(Color BOLD)Connector:$(Color)$(Color WHITEUNDERL)$(Check_jmx4perl_tomcat_service_connector_name)$(Color) $(Color BOLD)Protocol:$(Color)$(Color WHITEUNDERL)$(Check_jmx4perl_tomcat_connector_protocol)$(Color)                            |   |   |"
+echo -e "|         |        |        | ||Connection Timeout: $(Color WHITEUNDERL)$(Check_jmx4perl_tomcat_connector_connection_timeout )s$(Color)\tKeepAlive Timeout:$(Color WHITEUNDERL)$(Check_jmx4perl_tomcat_connector_keepalive_timeout )s$(Color)\t\t|   |   |"
+echo -e "|         |        |        | ||                                                        |   |   |"
+echo -e "|         |        |        | || _Acceptor Thread_________   _Worker Thread__________   |   |   |"
+echo -e "|         |        |        | ||| AcceptCount:$(Color WHITEUNDERL)$(Check_jmx4perl_tomcat_connector_acceptCount)$(Color)         | | MaxThreads:$(Color WHITEUNDERL)$(Check_jmx4perl_tomcat_connector_maxThreads)$(Color)         |  |   |   |"
+echo -e "|         |        |        | ||| Acceptor Thread Count:$(Color WHITEUNDERL)$(Check_jmx4perl_tomcat_threapool_acceptor_current_threads)$(Color) | | Current Thread Count:$(Color WHITEUNDERL)$(Check_jmx4perl_tomcat_threapool_current_threads)$(Color)|  |   |   |"
+echo -e "|         |        |        | |||_________________________| | Current Thread Buzy:$(Color WHITEUNDERL)$(Check_jmx4perl_tomcat_threapool_current_threads_buzy)$(Color)  |  |   |   |"
+echo -e "|         |        |        | || Free Thread Pool_______    |________________________|  |   |   |"
+echo -e "|         |        |        | ||| Free Count:   $(Color WHITEUNDERL)$(Check_jmx4perl_tomcat_threapool_free_threads)$(Color)\t|                               |   |   |"
+echo -e "|         |        |        | |||_______________________|                               |   |   |"
+echo -e "|         |        |        | ||_______________________________________________________ |   |   |"
+echo -e "|         |        |        | |  |                                                       |   |"
+echo -e "|         |        |        | |  | _Host_________________________________________    |   |"
+echo -e "|         |        |        | |  ||                                              |  ||   |"
+echo -e "|         |        |        | |  || _Context____________________________________ |  |   |"
+echo -e "|         |        |        | |  |||                                            ||| |   |"
+echo -e "|         |        |        | |  |||                                            ||| |   |"
+echo -e "|         |        |        | |  |||____________________________________________||| |   |"
+echo -e "|         |        |        | |  ||______________________________________________|| |   |"
+echo -e "|         |        |        | |  |________________________________________________| |   |"
+echo -e "|         |        |        | |_____________________________________________________|   |"
+echo -e "                   |        | __$(Color BOLD)JDBC$(Color)________________________________________________    |"
+echo -e "                   |        || BDZ2X Datasources: $(Color WHITEUNDERL)$(Check_jmx4perl_tomcat_jdbc_pool_count_bdz2x)$(Color)\t\t\t\t|   |" 
+echo -e "                   |        || Non BDZ2X Datasources: $(Color WHITEUNDERL)$(Check_jmx4perl_tomcat_jdbc_pool_count_non_bdz2x)$(Color)\t\t\t\t|   |" 
+echo -e "|         |        |        |___________________________________________________________|"
+echo -e "__________          _____________________________________________________________________________"
+echo ""
+echo ""
+echo ""
+echo -e "                    _Databases_______________________________________________________________"
+echo -e "                   |   BDZ2X:                                                                |" 
 
 
 }
@@ -1008,6 +1310,9 @@ stats)
 ;;
 diags)
   Diags $2 $3
+;;
+diagram)
+  Diagram
 ;;
 *)
   help
