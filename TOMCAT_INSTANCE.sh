@@ -254,7 +254,7 @@ Check_jvm_heapdump_last_cron_date() {
 LAST_HEAP_DUMP_DATE=$(ls -t $LOG_DIR/server/appli/cron_print_object_summary.$(Instance)*.log 2> /dev/null | head -1 | sed -e "s#.*$(Instance)-*\(\)#\1#"  )
 if [ ! -z $LOG_DIR -a ! -z "$LAST_HEAP_DUMP_DATE" ] 
   then echo $LAST_HEAP_DUMP_DATE
-  else echo "NON"
+  else echo -e "NON"
 fi
 }
 
@@ -338,7 +338,7 @@ if [[ $(Check_jvm_heapdump_cron_status) == "OK" ]]
     ADP_HEAP_CLASSES=$(cat $(Check_last_heapdump_cron) | grep com.adp | awk '{ SUM += $3} END { print SUM / 1024 / 1024 }'| awk '{$1=$1}1' FS=. OFS=, |  sed -e "s/,/ /g" | awk '{print $1}' )
     echo -e "$(Color BLUE)$(Color UNDERL)$ADP_HEAP_CLASSES$(Color)"
   else
-    echo "N/A"
+    echo -e "$(Color RED)N/A$(Color)"
 fi
 }
 
@@ -350,7 +350,7 @@ if [[ $(Check_jvm_heapdump_cron_status) == "OK" ]]
     NON_ADP_HEAP_CLASSES=$(cat $LAST_HEAP_DUMP | grep -v com.adp | awk '{ SUM += $3} END { print SUM / 1024 / 1024 }' | awk '{$1=$1}1' FS=. OFS=, |  sed -e "s/,/ /g" | awk '{print $1}' )
     echo -e "$(Color BLUE)$(Color UNDERL)$NON_ADP_HEAP_CLASSES$(Color)"
   else
-    echo "N/A"
+    echo -e "$(Color RED)N/A$(Color)"
 fi
 }
 
@@ -361,7 +361,7 @@ if [[ $(Check_jvm_heapdump_cron_status) == "OK" ]]
     ADP_HEAP_CLASSES=$(cat $LAST_HEAP_DUMP | grep -v com.adp.fr | awk '{ SUM += $3} END { print SUM }')
     echo -e "$(Color BLUE)$(Color UNDERL)$ADP_HEAP_CLASSES$(Color)"
   else
-    echo "N/A"
+    echo -e "$(Color RED)N/A$(Color)"
 fi
 }
 
