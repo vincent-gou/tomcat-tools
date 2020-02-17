@@ -85,14 +85,14 @@ fi
 }
 
 Instance_Info() {
-echo -e "$(Color WHITE)Legende:$(Color)\t\tJMX4PERL: $(Color WHITE)$(Color BOLD)$(Color UNDERL)VALEUR$(Color)\tHEAPDUMP File: $(Color BLUE)$(Color BOLD)$(Color UNDERL)VALEUR$(Color)"
+echo -e "$(Color WHITE)Legende:$(Color)\t\tJMX4PERL: $(Color BOLD)$(Color UNDERL)$(Color WHITE)VA$(Color GREEN)LE$(Color RED)UR$(Color)\tHEAPDUMP File: $(Color BLUE)$(Color BOLD)$(Color UNDERL)VALEUR$(Color)"
 echo -e "$(Color WHITE)INSTANCE:\t\t$(Color)$(Color BOLD)$(Instance)$(Color) "
 echo -e "$(Color WHITE)Demarree depuis:\t$(Color)$(Color BOLD)$(Start_time)$(Color)\tRefresh (Secs):\t$(Color BOLD)$1$(Color)\tMetrics:\t$(Color BOLD)$2$(Color)"
 echo -e "$(Color WHITE)CATALINA_HOME:\t\t$(Color)$CATALINA_HOME"
 echo -e "$(Color WHITE)CATALINA_BASE:\t\t$(Color)$CATALINA_BASE"
 echo -e "$(Color WHITE)JAVA_HOME:\t\t$(Color)$JAVA_HOME"
 echo -e "$(Color WHITE)UNIT SYSTEMD:$(Color)\t\tinstalled: $(Systemd_enable)\tStatut: $(Systemd_status)"
-echo -e "$(Color WHITE)Controles:$(Color)\t\tJDK: $(Check_jdk)\tJstat: $(Check_jstat)\tJmx4perl: $(Check_jmx4perl)\tLdapsearch: $(Check_ldapsearch)\tDIDA Conf: $(Check_dida_jdbc_info)\tDIDA cnx: $(Check_dida_connection)\tLast Heap_Dump: $(Check_jvm_heapdump_last_cron_date) "
+echo -e "$(Color WHITE)Controles:$(Color)\t\tJDK: $(Check_jdk)\tJstat: $(Check_jstat)\tJmx4perl: $(Check_jmx4perl)\tDIDA Conf: $(Check_dida_jdbc_info)\tDIDA cnx: $(Check_dida_connection)\tLast Heap_Dump: $(Check_jvm_heapdump_last_cron_date) "
 echo -e "$(Color WHITE)Infos Techniques:$(Color)"
 echo -e "\t$(Color BOLD)Port$(Color)\t$(Color BOLD)Thread$(Color)\t$(Color BOLD)Accept $(Color)\t$(Color BOLD)Compr$(Color)\t$(Color BOLD)Connect$(Color)\t$(Color BOLD)XMX$(Color)\t$(Color BOLD)XMS$(Color)"
 echo -e "\t$(Color BOLD)$(Color)\t$(Color BOLD)PoolMax$(Color)\t$(Color BOLD)Count$(Color)\t$(Color BOLD)ession$(Color)\t$(Color BOLD)Type$(Color)\t$(Color BOLD)Mo$(Color)\t$(Color BOLD)Mo$(Color)"
@@ -100,6 +100,7 @@ echo -e "\t$(Color BOLD)----$(Color)\t$(Color BOLD)------$(Color)\t$(Color BOLD)
 echo -e "Config:\t$(Color BOLD)$(Port_http_check)$(Color)\t$(Color BOLD)$(Max_threads)$(Color)\t$(Color BOLD)$(Accept_count)$(Color)\t$(Color BOLD)$(Compression)$(Color)\t$(Color BOLD)$(Connector_type)$(Color)\t$(Color BOLD)$(Jvm_xmx_config)$(Color)\t$(Color BOLD)$(Jvm_xms_config)$(Color)"
 echo -e "=======================================================================" 
 # Positionnement du point de rafraichissement si le parametre est passé au programme
+# Tout ce qui est affiché en dessous est rafraichi
 tput sc
 }
 
@@ -109,11 +110,11 @@ if  [  -n "$(Pid)" ]
   then
     echo -e "\t$(Color BOLD)Threads\tHeap\tJVM \tRam   \tSession\tRequest\tProcess\tThread \tAvg   \tADP    \tNon-ADP\tJDBC $(Color)"
     echo -e "\t$(Color BOLD)OS     \tSize\tCPU \tMemory\tActive \tCount  \tTimeAvg\tPool   \tError \tClasses\tClasses\tCount$(Color)"
-    echo -e "\t$(Color BOLD)       \t    \t%   \t      \tCount  \t       \t       \tCur/Mx \tRate  \tSize Mb\tSize Mb\t$(Color)"
+    echo -e "\t$(Color BOLD)       \t    \t%   \t      \tCount  \t       \t       \tConnector\tRate  \tSize Mb\tSize Mb\t$(Color)"
     echo -e "\t$(Color BOLD)-------\t----\t ---\t------\t-------\t-------\t-------\t-------\t------\t-------\t-------\t-----$(Color)"
     echo -e "$(Color BOLD)Actuel:\t$(Current_threads)\t$(Jvm_heap_memory)\t$(Jvm_cpu_use)\t$(Jvm_ram_memory)\t$(Session_active_count)\t$(Request_count)\t$(Avg_process_time)\t$(Thread_pool_buzyness)\t$(Error_average)\t$(Check_adp_heap_classes_size)\t$(Check_nonadp_heap_classes_size)$(Color)" | tee -a $OUTPUT_FILE.tmp
     echo -e "$(Color BOLD)Max:\t-----\t$(Jvm_max_heap_memory)\t-----\t-----\t$(Session_max_active_count)\t-------\t-------\t-------\t-------\t-------\t-------$(Color)"
-    if [ $TIMER -ne 0 -a $INCR -gt 0 2>/dev/null ]
+    if [ $TIMER -ne 0 -a $INCR -gt 0  ] 2>/dev/null
       then
             echo -e "$(Color BOLD)Max Se"
             echo -e "$(Color BOLD)ssion:\t$(Current_threads_max_session)\t$(Jvm_max_heap_memory_session)\t$(Jvm_cpu_use_max_session)\t$(Jvm_ram_memory_max_session)\t$(Session_max_active_count_session)\t-------\t$(Avg_process_time_max_session)\t$(Thread_pool_buzyness_max_session)\t$(Error_average_max_session)$(Color)\t-------\t-------\t$(Jdbc_count_max_session)$(Color)"
@@ -144,12 +145,12 @@ fi
 }
 
 Port_http() {
-PORT_HTTP=$(cat $CATALINA_BASE/conf/server.xml | grep "Connector port=" | awk '{print $2}'| sed -e "s/=/ /g"| awk '{print $2}' | sed -e "s/\"//g")
+PORT_HTTP=$(xmllint --xpath 'string(/Server/Service/Connector/@port)' $CATALINA_BASE/conf/server.xml)
 echo $PORT_HTTP
 }
 
 Port_shutdown() {
-PORT_SHUTDOWN=$(cat $CATALINA_BASE/conf/server.xml | grep "Server port=" | awk '{print $2}'| sed -e "s/=/ /g"| awk '{print $2}' | sed -e "s/\"//g")
+PORT_SHUTDOWN=$(xmllint --xpath 'string(/Server/@port)' $CATALINA_BASE/conf/server.xml)
 echo $PORT_SHUTDOWN
 }
 
@@ -171,7 +172,6 @@ fi
 
 
 Port_http_check() {
-#PORT_HTTP=$(cat $CATALINA_BASE/conf/server.xml | grep "Connector port=" | awk '{print $2}'| sed -e "s/=/ /g"| awk '{print $2}' | sed -e "s/\"//g")
 if  [  -n "$(Pid)" ]
   then
     STATE_PORT=$(netstat -anp 2>/dev/null | grep $(Pid) | grep LISTEN &>/dev/null)
@@ -186,7 +186,7 @@ fi
 
 
 Compression() {
-  COMPRESSION=$(cat $CATALINA_BASE/conf/server.xml | grep "compression=" | sed -e "s/=/ /g"| awk '{print $2}' | sed -e "s/\"//g")
+  COMPRESSION=$(xmllint --xpath 'string(/Server/Service/Connector/@compression)' $CATALINA_BASE/conf/server.xml)
   if [ $COMPRESSION == on ]
     then
     echo $(Color GREEN)$COMPRESSION$(Color)
@@ -196,24 +196,35 @@ fi
 }
 
 Max_threads() {
- MAX_THREADS=$(cat $CATALINA_BASE/conf/server.xml | grep "Connector port=" | awk '{print $5}'| sed -e "s/=/ /g"| awk '{print $2}' | sed -e "s/\"//g")
+ MAX_THREADS=$(xmllint --xpath 'string(/Server/Service/Connector/@maxThreads)' $CATALINA_BASE/conf/server.xml)
 echo $MAX_THREADS
 }
 
 Accept_count() {
- ACCEPT_COUNT=$(cat $CATALINA_BASE/conf/server.xml | grep "acceptCount=" | awk '{print $2}'| sed -e "s/=/ /g"| awk '{print $2}' | sed -e "s/\"//g")
+ ACCEPT_COUNT=$(xmllint --xpath 'string(/Server/Service/Connector/@acceptCount)' $CATALINA_BASE/conf/server.xml)
 echo $ACCEPT_COUNT
 }
 
 Connector_type() {
-CONNECTOR_TYPE=$(cat $CATALINA_BASE/conf/server.xml | grep "protocol=" | awk '{print $3}'| sed -e "s/=/ /g"| awk '{print $2}' | sed -e "s/\"//g")
+CONNECTOR_TYPE=$(xmllint --xpath 'string(/Server/Service/Connector/@protocol)' $CATALINA_BASE/conf/server.xml)
 if [ $CONNECTOR_TYPE == HTTP/1.1 ]
   then echo DEFAULT
   else 
-    CONNECTOR_TYPE=$(cat $CATALINA_BASE/conf/server.xml | grep "protocol=" | awk '{print $3}'| sed -e "s/=/ /g"| awk '{print $2}' | sed -e "s/\"//g" | sed -e "s/\./ /g" | awk '{print $5}' | sed -e "s/Protocol//g" | sed -e "s/Http11//g")
-    echo $CONNECTOR_TYPE | tr '[:lower:]' '[:upper:]'
+    CONNECTOR_TYPE=$(echo $CONNECTOR_TYPE | sed -e "s/\./ /g" | awk '{print $5}' | sed -e "s/Protocol//g" | sed -e "s/Http11//g")
+    echo ${CONNECTOR_TYPE^^}
 fi
 }
+
+Connector_type_lower() {
+CONNECTOR_TYPE=$(xmllint --xpath 'string(/Server/Service/Connector/@protocol)' $CATALINA_BASE/conf/server.xml)
+if [ $CONNECTOR_TYPE == HTTP/1.1 ]
+  then echo DEFAULT
+  else
+    CONNECTOR_TYPE=$(echo $CONNECTOR_TYPE | sed -e "s/\./ /g" | awk '{print $5}' | sed -e "s/Protocol//g" | sed -e "s/Http11//g")
+    echo ${CONNECTOR_TYPE,,} 
+fi
+}
+
 
 Current_threads() {
 
@@ -240,15 +251,15 @@ fi
 Check_jvm_heapdump_last_cron_date() {
 #LAST_HEAP_DUMP=$(find $LOG_DIR/server/appli -maxdepth 1 -mtime -1 -type f -name cron_print_object_summary.$(Instance)*.log -exec ls -rt  {} \; | tail -1)
 #LAST_HEAP_DUMP_DATE=$( find $LOG_DIR/server/appli -maxdepth 1 -mtime -1 -type f -name cron_print_object_summary.$(Instance)*.log -exec ls -lrt  {} \; | tail -1 | awk '{print $8}')
-LAST_HEAP_DUMP_DATE=$(ls -t $LOG_DIR/server/appli/cron_print_object_summary.$(Instance)*.log | head -1 | sed -e "s#.*$(Instance)-*\(\)#\1#"  )
-if [ ! -z $LOG_DIR -a ! -z "$LAST_HEAP_DUMP_DATE" ]
+LAST_HEAP_DUMP_DATE=$(ls -t $LOG_DIR/server/appli/cron_print_object_summary.$(Instance)*.log 2> /dev/null | head -1 | sed -e "s#.*$(Instance)-*\(\)#\1#"  )
+if [ ! -z $LOG_DIR -a ! -z "$LAST_HEAP_DUMP_DATE" ] 
   then echo $LAST_HEAP_DUMP_DATE
   else echo "NON"
 fi
 }
 
 Check_jvm_heapdump_cron_status() {
-if [ -n $(Check_jvm_heapdump_last_cron_date) ]
+if [  $(Check_jvm_heapdump_last_cron_date) != "NON" ]
   then echo "OK"
   else echo "NON"
 fi
@@ -257,8 +268,13 @@ fi
 
 Check_last_heapdump_cron() {
 #LAST_HEAP_DUMP=$(find $LOG_DIR/server/appli -maxdepth 1 -mtime -1 -type f -name cron_print_object_summary.$(Instance)*.log -exec ls -rt  {} \; | tail -1)
-LAST_HEAP_DUMP=$(ls -t $LOG_DIR/server/appli/cron_print_object_summary.$(Instance)*.log | head -1)
-echo $LAST_HEAP_DUMP
+LAST_HEAP_DUMP=$(ls -t $LOG_DIR/server/appli/cron_print_object_summary.$(Instance)*.log 2> /dev/null| head -1)
+if [  $(Check_jvm_heapdump_last_cron_date) != "NON" ]
+  then echo  $LAST_HEAP_DUMP
+  else echo "NON"
+fi
+
+#echo $LAST_HEAP_DUMP
 }
 
 Check_last_metrics_session_file() {
@@ -281,12 +297,12 @@ if [ ! -z $JDK_HOME -a -x $JDK_HOME/bin/jstat ]
 fi
 }
 
-Check_ldapsearch() {
-if [ ! -z $ORACLE_HOME -a -x $ORACLE_HOME/bin/ldapsearch -a -f $ORACLE_HOME/network/admin/ldap.ora ]
-  then echo -e "$(Color BOLD)$(Color GREEN)OK$(Color)"
-  else echo -e "$(Color BOLD)$(Color YELLOW)NON$(Color)"
-fi
-}
+#Check_ldapsearch() {
+#if [ ! -z $ORACLE_HOME -a -x $ORACLE_HOME/bin/ldapsearch -a -f $ORACLE_HOME/network/admin/ldap.ora ]
+#  then echo -e "$(Color BOLD)$(Color GREEN)OK$(Color)"
+#  else echo -e "$(Color BOLD)$(Color YELLOW)NON$(Color)"
+#fi
+#}
 
 
 Check_high_cpu_thread() {
@@ -321,6 +337,8 @@ if [[ $(Check_jvm_heapdump_cron_status) == "OK" ]]
     #LAST_HEAP_DUMP=$( find $LOG_DIR/server/appli -maxdepth 1 -mtime -1 -type f -name cron_print_object_summary.$(Instance)*.log -exec ls -rt  {} \; | tail -1)
     ADP_HEAP_CLASSES=$(cat $(Check_last_heapdump_cron) | grep com.adp | awk '{ SUM += $3} END { print SUM / 1024 / 1024 }'| awk '{$1=$1}1' FS=. OFS=, |  sed -e "s/,/ /g" | awk '{print $1}' )
     echo -e "$(Color BLUE)$(Color UNDERL)$ADP_HEAP_CLASSES$(Color)"
+  else
+    echo "N/A"
 fi
 }
 
@@ -331,6 +349,8 @@ if [[ $(Check_jvm_heapdump_cron_status) == "OK" ]]
    # NON_ADP_HEAP_CLASSES=$(cat $LAST_HEAP_DUMP | grep -v com.adp.fr | awk '{ SUM += $3} END { print SUM / 1024 / 1024 }' | sed -e "s/./ /g" | awk '{print $1}')
     NON_ADP_HEAP_CLASSES=$(cat $LAST_HEAP_DUMP | grep -v com.adp | awk '{ SUM += $3} END { print SUM / 1024 / 1024 }' | awk '{$1=$1}1' FS=. OFS=, |  sed -e "s/,/ /g" | awk '{print $1}' )
     echo -e "$(Color BLUE)$(Color UNDERL)$NON_ADP_HEAP_CLASSES$(Color)"
+  else
+    echo "N/A"
 fi
 }
 
@@ -340,6 +360,8 @@ if [[ $(Check_jvm_heapdump_cron_status) == "OK" ]]
     LAST_HEAP_DUMP=$(ls -t $LOG_DIR/server/appli/cron_print_object_summary.$(Instance)*.log | head -1)
     ADP_HEAP_CLASSES=$(cat $LAST_HEAP_DUMP | grep -v com.adp.fr | awk '{ SUM += $3} END { print SUM }')
     echo -e "$(Color BLUE)$(Color UNDERL)$ADP_HEAP_CLASSES$(Color)"
+  else
+    echo "N/A"
 fi
 }
 
@@ -402,7 +424,7 @@ EOF
 
 Check_jdbc_connection() {
 DIDA_DS_LIST_FILE=$INSTALL_DIR/tmp_dir/dida_ds_list.txt
-JDBC_DIDA=$(cat $DIDA_DS_LIST_FILE | grep $1>/dev/null )
+JDBC_DIDA=$(cat $DIDA_DS_LIST_FILE | grep $1 >/dev/null )
 if [ $? -eq 0 ]
   then echo "OK"
   else echo "NO"
@@ -580,7 +602,7 @@ fi
 Check_jmx4perl_tomcat_threapool_current_threads() {
 if [[ $(Check_jmx4perl) == *OK* ]]
   then
-    CURRENT_THREADS=$(/usr/bin/jmx4perl http://localhost:$(Port_http)/j4p --product tomcat read Catalina:type=ThreadPool,name=\"http-nio2-$(Check_jmx4perl_tomcat_service_connector_name)\" currentThreadCount )
+    CURRENT_THREADS=$(/usr/bin/jmx4perl http://localhost:$(Port_http)/j4p --product tomcat read Catalina:type=ThreadPool,name=\"http-$(Connector_type_lower)-$(Check_jmx4perl_tomcat_service_connector_name)\" currentThreadCount )
     echo $CURRENT_THREADS
   else
     echo -e $(Color BOLD)$(Color YELLOW)No JMX$(Color)
@@ -727,7 +749,7 @@ echo $JDBC_COUNT_MAX_SESSION
 }
 
 Jvm_ram_memory() {
-RAM_MEMORY=$((  ` cut -d' ' -f2 <<<cat /proc/$(Pid)/statm 2>/dev/null || echo "0"`   / 1024 ))
+RAM_MEMORY=$((` cut -d' ' -f2 <<< cat /proc/$(Pid)/statm 2>/dev/null || echo "0"` / 1024 ))
 echo $RAM_MEMORY Mo
 }
 
@@ -755,7 +777,7 @@ fi
 }
 
 Self_ram_memory() {
-RAM_MEMORY=$(( ` cut -d' ' -f2 <<<cat /proc/$1/statm 2>/dev/null || echo "0" ` / 1024 ))
+RAM_MEMORY=$((` cut -d' ' -f2 <<< cat /proc/$1/statm 2>/dev/null || echo "0"` / 1024 ))
 if [[ $RAM_MEMORY -lt 10 ]]
   then
     echo $(Color BOLD)$(Color GREEN)$RAM_MEMORY Mo$(Color)
@@ -952,22 +974,22 @@ JVM_XMS=$(ps -ef|grep $(Pid)| grep -v grep|egrep -o 'Xms[0-9]*' |tr '\r' ' '| se
 echo $JVM_XMS
 }
 
-Check_ldap_ora_oid_file() {
-LDAP_ORA_OID_FILE="$CONFIG_PATH/tmp_dir/LDAP_ORA_OID_FILE.txt"
-if [ -f $LDAP_ORA_OID_FILE ] 
-  then
-    CHECK_LDAP_ORA_OID_FILE=true
-  else 
-    CHECK_LDAP_ORA_OID_FILE=false
-fi
-}
+#Check_ldap_ora_oid_file() {
+#LDAP_ORA_OID_FILE="$CONFIG_PATH/tmp_dir/LDAP_ORA_OID_FILE.txt"
+#if [ -f $LDAP_ORA_OID_FILE ] 
+#  then
+#    CHECK_LDAP_ORA_OID_FILE=true
+#  else 
+#    CHECK_LDAP_ORA_OID_FILE=false
+#fi
+#}
 
 
-Generate_ldap_ora_oid_file() {
-LDAP_BASE=$(cat $ORACLE_HOME/network/admin/ldap.ora | grep default_admin_context | awk '{print $3}' )
-LDAP_SERVERS=$(cat $ORACLE_HOME/network/admin/ldap.ora | grep directory_servers | awk '{print $2}' | sed -e "s/(//g" | sed -e "s/)//g" | sed -e "s/,/ /g" | sed -e "s/:/ /g" )
-
-}
+#Generate_ldap_ora_oid_file() {
+#LDAP_BASE=$(cat $ORACLE_HOME/network/admin/ldap.ora | grep default_admin_context | awk '{print $3}' )
+#LDAP_SERVERS=$(cat $ORACLE_HOME/network/admin/ldap.ora | grep directory_servers | awk '{print $2}' | sed -e "s/(//g" | sed -e "s/)//g" | sed -e "s/,/ /g" | sed -e "s/:/ /g" )
+#
+#}
 
 start() {
 $CATALINA_HOME/bin/startup.sh
@@ -1008,7 +1030,7 @@ if [ -z $CATALINA_BASE -o -z $LOG_DIR ]
    for i in $CATALINA_BASE/logs $CATALINA_BASE/webapps/gamma/WEB-INF/logs $LOG_DIR  
    do 
     printf "* $i: " 
-    printf $(find $i -type f -name "*.log" -print -delete | wc -l)
+    printf $(find $i -type f \( -name "*.log" -o -name "*.out" -o -name "*.txt" \) -print -delete | wc -l)
     if [ ${PIPESTATUS[0]} -eq 0 ] 
       then echo -e "$(Color GREEN)\tOK$(Color)"
       else echo -e "$(Color RED)\tKO$(Color)" 
@@ -1160,6 +1182,9 @@ true
 
 
 Diags() {
+
+#CONNECTOR_TYPE=$(echo $(Connector_type) |  tr '[:upper:]' '[:lower:]' )
+#echo $CONECTOR_TYPE
 clear
 TIMER=x$1
 if [ -z $TIMER -o "$TIMER" == "x" -o $(echo "$1" | grep -qE '^[0-9]+$'; echo $?) -ne "0" ]
@@ -1178,7 +1203,7 @@ fi
 
 
 Instance_Info $TIMER $METRICS
-if [ $TIMER -ne 0  2>/dev/null ] 
+if [ $TIMER -ne 0 ] 2>/dev/null 
   then 
     while true   
       do
@@ -1198,7 +1223,7 @@ if [ $TIMER -ne 0  2>/dev/null ]
       Instance_info_dynamic   
       Net_threads
       Db_sessions
-      Check_high_cpu_thread
+      #Check_high_cpu_thread
 fi 
 
 
