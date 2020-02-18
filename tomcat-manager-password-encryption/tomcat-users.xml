@@ -3,10 +3,10 @@
               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
               xsi:schemaLocation="http://tomcat.apache.org/xml tomcat-users.xsd"
               version="1.0">
-<role rolename="manager-gui"/>
-<role rolename="manager-jmx"/>
-<role rolename="manager-script"/>
-<role rolename="manager-status"/>
+<role rolename="manager-gui"/> <!-- http://<server>:<port>/manager -->
+<role rolename="manager-jmx"/> <!-- http://<server>:<port>/manager/jmxproxy -->
+<role rolename="manager-script"/> <!-- http://<server>:<port>/manager/text -->
+<role rolename="manager-status"/> <!-- http://<server>:<port>/manager/status or http://<server>:<port>/manager/status?XML=true -->
 <user username="admin-all" password="58d3dc5f32ff6074ca9338f9fd4b6110$10000$66020098234b071efa23a6b2a256933150ddd3a46fb983e979e1cb4d744646486" roles="manager-gui,manager-jmx,manager-script,manager-status"/>
 <user username="admin-status" password="58d3dc5f32ff6074ca9338f9fd4b6110$10000$66020098234b071efa23a6b2a256933150ddd3a46fb983e979e1cb4d74456513" roles="manager-status"/>
 <user username="admin-script" password="58d3dc5f32ff6074ca9338f9fd4b6110$10000$66020098234b071efa23a6b2a256933150ddd3a46fb983e979e1cb4d7454441" roles="manager-script"/>
