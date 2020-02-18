@@ -45,3 +45,5 @@ password:4adf2646795466f765215631741dbe98$10000$3cbf4f70cde7ae7cf1df04a0d82ff669
 </tomcat-users>
 ```
 See [tomcat-users.xml](https://github.com/vincent-gou/tomcat-tools/edit/master/tomcat-manager-password-encryption/tomcat-users.xml) for more information.
+
+## Restart yout Tomcat instance
