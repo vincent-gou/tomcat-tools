@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tomcat-users xmlns="http://tomcat.apache.org/xml"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://tomcat.apache.org/xml tomcat-users.xsd"
+              version="1.0">
+<role rolename="manager-gui"/>
+<role rolename="manager-jmx"/>
+<role rolename="manager-script"/>
+<role rolename="manager-status"/>
+<user username="admin-all" password="58d3dc5f32ff6074ca9338f9fd4b6110$10000$66020098234b071efa23a6b2a256933150ddd3a46fb983e979e1cb4d744646486" roles="manager-gui,manager-jmx,manager-script,manager-status"/>
+<user username="admin-status" password="58d3dc5f32ff6074ca9338f9fd4b6110$10000$66020098234b071efa23a6b2a256933150ddd3a46fb983e979e1cb4d74456513" roles="manager-status"/>
+<user username="admin-script" password="58d3dc5f32ff6074ca9338f9fd4b6110$10000$66020098234b071efa23a6b2a256933150ddd3a46fb983e979e1cb4d7454441" roles="manager-script"/>
+<user username="admin-jmx" password="58d3dc5f32ff6074ca9338f9fd4b6110$10000$66020098234b071efa23a6b2a256933150ddd3a46fb983e979e1c4545455458787" roles="manager-jmx"/>
+<user username="admin-gui" password="58d3dc5f32ff6074ca9338f9fd4b6110$10000$66020098234b071efa23a6b2a256933150ddd3a46fb983e979e1cb4d74b7878848" roles="manager-gui"/>
+</tomcat-users>
