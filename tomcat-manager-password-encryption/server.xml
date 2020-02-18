@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Server port="4005" shutdown="SHUTDOWN">
+  <Listener className="org.apache.catalina.startup.VersionLoggerListener" />
+  <!--APR library loader. Documentation at /docs/apr.html -->
+  <!-- FR: Desactivation listener APR car non utilise -->
+  <!-- EN: APR listener desactivation because not used -->
+  <!--<Listener className="org.apache.catalina.core.AprLifecycleListener" SSLEngine="on" />-->
+  <!-- Prevent memory leaks due to use of particular java/javax APIs-->
+  <Listener className="org.apache.catalina.core.JreMemoryLeakPreventionListener" />
+  <Listener className="org.apache.catalina.mbeans.GlobalResourcesLifecycleListener" />
+  <Listener className="org.apache.catalina.core.ThreadLocalLeakPreventionListener" />
+
+  <GlobalNamingResources>
+    <Resource name="UserDatabase" auth="Container"
+              type="org.apache.catalina.UserDatabase"
+              description="User database that can be updated and saved"
+              factory="org.apache.catalina.users.MemoryUserDatabaseFactory"
+              pathname="conf/tomcat-users.xml" />
+  </GlobalNamingResources>
+  <Service name="Catalina">
+        <Connector port="8080" protocol="org.apache.coyote.http11.Http11Nio2Protocol" maxHttpHeaderSize="8192" maxThreads="200" minSpareThreads="10"
+           enableLookups="false"  acceptCount="100"
+           connectionTimeout="20000" disableUploadTimeout="true"
+           useSendfile="false"
+           compression="on"
+           compressionMinSize="800"
+           compressibleMimeType="text/html,application/x-javascript,text/css,application/javascript,text/javascript,text/plain,text/xml,application/json,application/vnd.ms-fontobject,application/x-font-opentype,application/x-font-truetype,application/x-font-ttf,application/xml,font/eot,font/opentype,font/otf,image/svg+xml,image/vnd.microsoft.icon"
+           maxPostSize="10485760"
+           server=" "
+           >
+           <UpgradeProtocol className="org.apache.coyote.http2.Http2Protocol"/>
+        </Connector>
+    <Engine name="Catalina" defaultHost="localhost">
+      <Realm className="org.apache.catalina.realm.LockOutRealm">
+        <Realm className="org.apache.catalina.realm.UserDatabaseRealm"
+               resourceName="UserDatabase" >
+               <!-- FR: Paramètres d'encryptage voir: http://www.mid.mr/docs/config/credentialhandler.html#SecretKeyCredentialHandler -->
+               <!-- EN: Encryption parameters see: http://www.mid.mr/docs/config/credentialhandler.html#SecretKeyCredentialHandler -->
+                <CredentialHandler className="org.apache.catalina.realm.SecretKeyCredentialHandler"
+                      algorithm="PBKDF2WithHmacSHA512"
+                      iterations="10000"
+                      keyLength="256"
+                      saltLength="16"/>
+        </Realm>
+      </Realm>
+      <Host name="localhost"  appBase="webapps"
+            unpackWARs="true" autoDeploy="true" deployOnStartup="true">
+        <Valve className="org.apache.catalina.valves.AccessLogValve" directory="logs"
+               prefix="localhost_access_log" suffix=".txt"
+               pattern="%h %l %u %t &quot;%r&quot; %s %b" />
+        <!-- FR: Active la detection des stuck thread et tente de les arreter -->
+        <!-- EN: Activate stuck thread detection and try to stop them -->
+        <Valve className="org.apache.catalina.valves.StuckThreadDetectionValve" threshold="600" interruptThreadThreshold="60" />
+      </Host>
+    </Engine>
+  </Service>
+</Server>
