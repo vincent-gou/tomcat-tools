@@ -1,0 +1,647 @@
+ 
+
+Informatins	Date	Bloquant Tomcat	Bloquant LSPRH	Origine	Corrigé	Date
+Migration des outils de supervision Thruk	7 oct. 2019 			Equipe Production		 
+Informations
+L'outil de supervision actuel en production est THRUK.
+
+Les divers check du serveur d'application utilisent la webapp J4P déployé avec les instances weblogic et Tomcat.
+
+Cette page recense les check actuellement defini sur les instances LSPRH sous Weblogic. Un tableau recense les check non compatibles Weblogic ou les commandes à modifier.
+
+ 
+
+
+
+ 
+
+Etat des lieux en Weblogic
+Liste des services 
+Nom	Catégorie	Impacté par la migration Tomcat	Fonctionnel pour Tomcat	A conserver	informations
+Process falcon-sensor	SYSTEME				??
+a:Z2X-c:mq-Z2X.FOR.ZADIG.PROD.LSPRH<X>R.<YY>
+
+MQ				Test connexion à la queue
+a:Z2X-c:nfs
+
+SYSTEME				Checking for mounted nfs shares (from /etc/fstab):
+check-host-alive
+
+SYSTEME				 
+cpu
+
+SYSTEME				 
+disk /
+
+SYSTEME				 
+disk /ehc/fs1
+
+SYSTEME				 
+disk /var
+
+SYSTEME				 
+io
+
+SYSTEME				 
+load
+
+SYSTEME				 
+a:Z2X-c:wls-lsprh<X>rprd-i<YY>
+
+WEBLOGIC				 ???
+lsprh<X>rprd-i<YY>-check_execute_thread_total_count
+
+WEBLOGIC				Le check par défaut execute_thread_total_count ne fonctionne pas en Tomcat, appelle la branche JMX bea: com.bea:Name=ThreadPoolRuntime,ServerRuntime=gammaserver,Type=ThreadPoolRuntime
+lsprh<X>rprd-i<YY>-check_health_state	WEBLOGIC				Le check par défaut health_state ne fonctionne pas en Tomcat, appelle la branche JMX: com.bea:Name=ThreadPoolRuntime,ServerRuntime=gammaserver,Type=ThreadPoolRuntime
+lsprh<X>rprd-i<YY>-check_jmx_heapmemory	JMX JVM				Check la taille de la heap memory
+lsprh<X>rprd-i<YY>-check_jmx_hogging_thread_count	WEBLOGIC				
+Le check par défaut hogging_thread_count ne fonctionne pas en Tomcat, appelle la branche JMX: com.bea:Name=ThreadPoolRuntime,ServerRuntime=gammaserver,Type=ThreadPoolRuntime
+
+Le mécanisme de calcul des hogging_thread n'existe pas dans Tomcat.
+
+lsprh<X>rprd-i<YY>-check_jmx_stuck_thread_count	WEBLOGIC				
+Le check par défaut stuck_thread_count ne fonctionne pas en Tomcat, appelle la branche JMX: com.bea:Name=direct,ServerRuntime=gammaserver,Type=WorkManagerRuntime
+
+Le mécanisme de calcul des stuck_thread n'existe pas dans Tomcat.
+
+Fonctionne en ajoutant la valve org.apache.catalina.valves.StuckThreadDetectionValve.
+
+lsprh<X>rprd-i<YY>-check_jmx_threadcount	JMX JVM				Nombre de Thread démarrés actuellement
+lsprh<X>rprd-i<YY>-check_jmx_webapp_sessions	WEBLOGIC				Nombre de sessions par webapp (gamma)
+lsprh<X>rprd-i<YY>-check_open_sockets	WEBLOGIC				
+Le check par défaut open_sockets ne fonctionne pas en Tomcat, appelle la branche JMX:
+
+com.bea:Name=gammaserver,Type=ServerRuntime
+
+lsprh<X>rprd-i<Y>-jdbc_pool_CurrCapacity_FR<ZZZZZZZZZZ>	WEBLOGIC				
+Le check par défaut jdbc_pool_state ne fonctionne pas en Tomcat, appelle la branche JMX:
+
+com.bea:Name=${1:Tx-ds_FR<ZZZZZZZZZZ>},ServerRuntime=${0:gammaserver},Type=JDBCConnectionPoolRuntime/State
+
+ 
+
+ 
+
+Etat des lieux Tomcat
+Nom	Catégorie	Impacté par la migration Tomcat	Fonctionnel pour Tomcat	A conserver	informations
+Process falcon-sensor	SYSTEME				??
+a:Z2X-c:mq-Z2X.FOR.ZADIG.PROD.LSPRH<X>R.<YY>
+
+MQ				Test connexion à la queue
+a:Z2X-c:nfs
+
+SYSTEME				Checking for mounted nfs shares (from /etc/fstab):
+check-host-alive
+
+SYSTEME				 
+cpu
+
+SYSTEME				 
+disk /
+
+SYSTEME				 
+disk /ehc/fs1
+
+SYSTEME				 
+disk /var
+
+SYSTEME				 
+io
+
+SYSTEME				 
+load
+
+SYSTEME				 
+a:Z2X-c:wls-lsprh<X>rprd-i<YY>
+
+WEBLOGIC				 ???
+lsprh<X>rprd-i<YY>-check_execute_thread_total_count
+
+WEBLOGIC				
+Le check par défaut execute_thread_total_count ne fonctionne pas en Tomcat, appelle la branche JMX bea: com.bea:Name=ThreadPoolRuntime,ServerRuntime=gammaserver,Type=ThreadPoolRuntime
+
+peut être remplacé par: tc_connector_threads la métrique correspondra aux thread busy ou actifs.
+
+lsprh<X>rprd-i<YY>-check_jmx_stuck_thread_count	WEBLOGIC				
+Le check par défaut stuck_thread_count ne fonctionne pas en Tomcat, appelle la branche JMX: com.bea:Name=direct,ServerRuntime=gammaserver,Type=WorkManagerRuntime
+
+Le mécanisme de calcul des stuck_thread n'existe pas dans Tomcat.
+
+Fonctionne en ajoutant la valve org.apache.catalina.valves.StuckThreadDetectionValve.
+
+Exemple: check_stuck_thread 
+
+lsprh<X>rprd-i<YY>-check_health_state	WEBLOGIC				
+Le check par défaut health_state ne fonctionne pas en Tomcat, appelle la branche JMX: com.bea:Name=ThreadPoolRuntime,ServerRuntime=gammaserver,Type=ThreadPoolRuntime
+
+Un check tomcat permet d'appeler la branche JMX qui retourne l'état de la webapp.
+
+Exemple: check_health_state
+
+lsprh<X>rprd-i<YY>-check_jmx_heapmemory==> memory_heap	JMX JVM				
+Check la taille de la heap memory
+
+Exemple: Memory_Heap
+
+lsprh<X>rprd-i<YY>-check_jmx_threadcount ==> tc_thread_count	JMX JVM				
+Nombre de Thread démarrés actuellement
+
+Exemple: Tc_Thread_Count
+
+lsprh<X>rprd-i<YY>-check_jmx_webapp_sessions	WEBLOGIC				
+Nombre de sessions par webapp (gamma)
+
+Exemple: Active_Sessions
+
+lsprh<X>rprd-i<YY>-check_open_sockets	WEBLOGIC				
+Le check par défaut open_sockets ne fonctionne pas en Tomcat, appelle la branche JMX:
+
+com.bea:Name=gammaserver,Type=ServerRuntime
+
+Peut etre remplacé par check_open_file_descriptor
+
+Exemple: check_open_file_descriptor
+
+lsprh<X>rprd-i<Y>-jdbc_pool_CurrCapacity_FR<ZZZZZZZZZZ>	WEBLOGIC				
+Le check par défaut jdbc_pool_state ne fonctionne pas en Tomcat, appelle la branche JMX:
+
+com.bea:Name=${1:Tx-ds_FR<ZZZZZZZZZZ>},ServerRuntime=${0:gammaserver},Type=JDBCConnectionPoolRuntime/State
+
+Un fichier de config jmx4perl modifié permet de le faire:
+
+Exemple: jdbc_pool_CurrCapacity
+
+lsprh<X>rprd-i<Y>-nb_client	APPLI				
+Nouveau check suite DEV Stephane Talon
+
+Permet de récupérer le nombre de client déployés dans une instance Tomcat via appel JMX
+
+Exemple: lsprh_nb_client
+
+lsprh<X>rprd-i<Y>app_client_config_error	APPLI				
+Nouveau check suite DEV Stephane Talon
+
+Permet d'envoyer via JMX une demande de controle de la config et retourner si des erreurs sont détectées
+
+Exemple: app_client_config_error
+
+Memory_heap:
+Mesure la taille de la mémoire occupée dans la JVM
+
+infog@lx2811:/ehc/fs1/adp/z2x/work-lsprh7tomcatdev_i1/config> /usr/bin/check_jmx4perl -u http://localhost:4000/j4p --product tomcat --config /ehc/fs1/adp/z2x/work-lsprh7tomcatdev_i1/config/lsprh_tomcat.cfg --check memory_heap
+OK - Heap-Memory: 18.36% used (334.29 MB / 1.78 GB) | Heap=350531784B;1527146086.4;1718039347.2;0;1908932608
+Non-Heap Memory
+ 
+
+infog@lx2811:/ehc/fs1/adp/z2x/work-lsprh7tomcatdev_i1/config> /usr/bin/check_jmx4perl -u http://localhost:4000/j4p --product tomcat --config /ehc/fs1/adp/z2x/work-lsprh7tomcatdev_i1/config/lsprh_tomcat.cfg --check memory_non_heap
+OK - Non-Heap-Memory: -10417983999.99% used (99.35 MB / -01 B) | Non-Heap=104179840B;;;0;-1
+ 
+
+requestCount:
+nombre de requetes par connector (HTTP / AJP)
+
+Valeur cumulative depuis le démarrage de l'instance.
+
+La valeur étant cumulative, il faut que dans THRUK l'UOM (unité de mesure) soit positionnée à "c" afin que soit enregsitré le delta entre 2 checks.
+
+C'est important sinon cette donnée ne sera pas pertinente.
+
+Il est possible de positionner des seuils correspondant à:
+
+Warning: 30 req/secs
+
+Critical: 50 req/secs
+
+Le calcul peut se faire en calculant le nombre de requete entre les 2 checks divisé par le nomre de secondes entre les 2 checks.
+
+Exemple:
+
+Durée entre 2 checks = 5 minutes = 300 Secondes
+
+Nombre de requêtes depuis le démarrage de l'instance: 543 000
+
+Valeur précédente relevée par Thruk: 538 500
+
+Delta: 543000-498000 = 4 500 requetes en 5 minutes
+
+Requêtes / secondes = 4500 / 300 = 15 req /sec
+
+Code retour: OK
+
+infog@lx2811:/ehc/fs1/adp/z2x/work-lsprh7tomcatdev_i1/config> /usr/bin/check_jmx4perl -u http://localhost:4000/j4p --product tomcat --config /ehc/fs1/adp/z2x/work-lsprh7tomcatdev_i1/config/lsprh_tomcat.cfg --check tc_connector_request_count http-nio2-4000
+OK - requestCount : Value 307 in range | requestCount=307;;
+infog@lx2811:/ehc/fs1/adp/z2x/work-lsprh7tomcatdev_i1/config>
+Check Jmx4perl
+# Check for monitoring the cumulative total count of request on connectors (http or AJP)
+<Check tc_connector_request_count>
+   Value = Catalina:type=GlobalRequestProcessor,name="$0"/requestCount
+   Name = requestCount
+   Label = %v requetes pour $0 : %c
+</Check>
+ 
+
+ 
+
+tc_thread_count
+Nombre de threads totaux actifs dans la JVM;
+
+The current number of live threads including both daemon and non-daemon threads.
+
+ 
+
+infog@lx2811:/ehc/fs1/adp/z2x/work-lsprh7tomcatdev_i1/config> /usr/bin/check_jmx4perl -u http://localhost:4000/j4p --product tomcat --config /ehc/fs1/adp/z2x/work-lsprh7tomcatdev_i1/config/lsprh_tomcat.cfg --check tc_thread_count
+OK - Thread-Count : Value 468 in range | Thread-Count=468;800;1000
+Check Jmx4perl
+<Check tc_thread_count>
+   Value = java.lang:type=Threading/ThreadCount
+   Name = Thread-Count
+   Critical = ${0:1000}
+   Warning = ${1:800}
+</Check>
+tc_thread_peak_count
+The peak live thread count since the JVM started or peak was reset.
+
+infog@lx2811:/ehc/fs1/adp/z2x/work-lsprh7tomcatdev_i1/config> /usr/bin/check_jmx4perl -u http://localhost:4000/j4p --product tomcat --config /ehc/fs1/adp/z2x/work-lsprh7tomcatdev_i1/config/lsprh_tomcat.cfg --check tc_thread_peak_count
+OK - Thread-Peak-Count : Value 53 in range | Thread-Peak-Count=53;800;1000
+ 
+
+check_stuck_thread
+Contrôle des threads bloqués depuis un certain temps.
+
+Le paramétrage se fait au niveau de tomcat dans le fichier server.xml, ci-dessous le thread est détecté "stuck" au bout de 10 min (600 secondes), Tomcat tentera de l’arrêter pendant 60 secondes au maximum.
+
+Certaines requetes ou transfert de fichiers ne doivent pas dépasser 10 minutes sinon le thread sera arreter par Tomcat.
+
+<Valve className="org.apache.catalina.valves.StuckThreadDetectionValve" threshold="600" interruptThreadThreshold="60" />
+/usr/bin/check_jmx4perl -u http://localhost:4000/j4p --product tomcat --config /ehc/fs1/adp/z2x/work-lsprh7tomcatdev_i1/config/lsprh_tomcat.cfg --method post --check tc_stuck_thread_count
+OK - Stuck-Thread-Count : Value 0 in range | Stuck-Thread-Count=0;10;20
+ 
+
+Check Jmx4perl
+<Check tc_stuck_thread_count>
+#  Need org.apache.catalina.valves.StuckThreadDetectionValve activated
+   Value = Catalina:type=Valve,host=localhost,name=StuckThreadDetectionValve/stuckThreadCount
+   Name = Stuck-Thread-Count
+   Critical = ${0:20}
+   Warning = ${1:10}
+</Check>
+ 
+
+tc_connector_threads
+Pourcentage de thread utilisé par rapport aux nombre de thread maximum possible sur le connecteur.
+
+Paramètre: nom du connecteur http NIO2
+
+format: http-nio2-%HTTP_PORT%
+
+exemple: http-nio2-4000
+
+infog@lx2811:/ehc/fs1/adp/z2x/work-lsprh7tomcatdev_i1/config> /usr/bin/check_jmx4perl -u http://localhost:4000/j4p --product tomcat --config /ehc/fs1/adp/z2x/work-lsprh7tomcatdev_i1/config/lsprh_tomcat.cfg --check tc_connector_threads http-nio2-4000
+OK - Connector http-nio2-4000 : 0.50% used (01 / 200) | connector_threads=1;160;180;0;200
+CHeck Jmx4perl
+<Check tc_connector_threads>
+  Use = relative_base($1,$2)
+  Label = Connector $0 : $BASE
+  Name = ${3:connector_threads}
+  Value = *:type=ThreadPool,name="$0"/currentThreadsBusy
+  Base = *:type=ThreadPool,name="$0"/maxThreads
+  Critical = ${1:150}
+  Warning = ${2:100}
+</Check>
+Active_Sessions
+Nombre de sessions actives pour une webapp donnée.
+
+Paramètre: nomde la webapp
+
+exemple: gamma
+
+/usr/bin/check_jmx4perl -u http://localhost:4000/j4p --product tomcat --config /ehc/fs1/adp/z2x/work-lsprh7tomcatdev_i1/config/lsprh_tomcat.cfg --method post --check tc_session_active gamma
+OK - gamma: Active Sessions = 0 | sessions_active=0;800;1000
+Check Jmx4perl
+<Check tc_session_active>
+  MBean = Catalina:type=Manager,host=localhost,context=/$0
+  Attribute = activeSessions
+  Name = ${3:sessions_active}
+  Label = $0: Active Sessions = %v
+  Critical = ${1:1500}
+  Warning = ${2:800}
+</Check>
+Max_Active_Sessions
+/usr/bin/check_jmx4perl -u http://localhost:4000/j4p --product tomcat --config /ehc/fs1/adp/z2x/work-lsprh7tomcatdev_i1/config/lsprh_tomcat.cfg --method post --check tc_session_active_max gamma
+OK - gamma: Max-Active Sessions = 1 | sessions_max=1;800;1000
+ 
+
+check_health_state
+Contrôle de l'état du déploiement du contexte.
+
+Le statut peut être STARTED ou STOPPED.
+
+/usr/bin/check_jmx4perl -u http://localhost:4000/j4p --product tomcat --config /ehc/fs1/adp/z2x/work-lsprh7tomcatdev_i1/config/lsprh_tomcat.cfg --method post --check tc_webmodule_running "//localhost/gamma"
+OK - //localhost/gamma   | [*:j2eeType#WebModule,name#//localhost/gamma,*,stateName]=STARTED;;STOPPED
+Check Jmx4perl
+
+<Check tc_webmodule_running>
+  MBean = *:j2eeType=WebModule,name=$0,*
+  Attribute = stateName
+  Label = $0 %t
+  Critical = STOPPED
+</Check> 
+ 
+
+check_open_file_descriptor
+Contrôle le nombre fichiers ouverts par la JVM.
+
+Correspond au paramètre de l'utilisateur.
+
+ 
+
+infog@lx2811:/ehc/fs1/adp/z2x/lsprh7tomcatdev_i1/server/tomcat> ulimit -n
+65536
+infog@lx2811:/ehc/fs1/adp/z2x/lsprh7tomcatdev_i1/server/tomcat>
+Si le process est lancé par systemd, systemd gère les limitations en les renseignant dans le fichier de service ou template:
+
+LimitNOFILE=     ulimit -n             Number of File Descriptors 
+ /usr/bin/check_jmx4perl -u http://localhost:4000/j4p --product tomcat --config /ehc/fs1/adp/z2x/work-lsprh7tomcatdev_i1/config/lsprh_tomcat.cfg --method post --check tc_open_file_descriptor
+OK - Open-File-Descriptor : Value 165 in range | Open-File-Descriptor=165;1000;3000
+Check Jmx4perl
+ 
+
+<Check tc_open_file_descriptor>
+   Value = java.lang:type=OperatingSystem/OpenFileDescriptorCount
+   Name = Open-File-Descriptor
+   Critical = ${1:3000}
+   Warning = ${2:1000}
+</Check>
+
+ 
+
+jdbc_pool_CurrCapacity_FR<ZZZZZZZZZZ>
+Indique l'état d'un pool de connexion JDBC
+
+Paramètre: nom du pool
+
+format: BDZ2X_%CODE_CLIENT%
+
+/usr/bin/check_jmx4perl -u http://localhost:4000/j4p --product tomcat --config /ehc/fs1/adp/z2x/work-lsprh7tomcatdev_i1/config/lsprh_tomcat.cfg --method post --check tc_datasource_connections BDZ2X_FR20191121093638338
+OK - All 3 datasource checks are OK
+[1] OK dbpool_idle: 1.00% BDZ2X_FR20191121093638338 DB connections idle (1 idle / 100 max)
+[2] OK dbpool_active: 0.00% BDZ2X_FR20191121093638338 DB connections active (0 active / 100 max)
+[3] OK dbpool_capacity: 0.00% BDZ2X_FR20191121093638338 DB connections capacity (0 active / 1 idle) | dbpool_idle=1;95;80;0;100 dbpool_active=0;95;80;0;100 dbpool_capacity=0;0.95;0.8;0;1
+Check Jmx4perl
+Utilise la fonctionnalité multicheck
+
+<Check tc_datasource_connections_idle>
+  Value = tomcat.jdbc:type=ConnectionPool,class=org.apache.tomcat.jdbc.pool.DataSource,name=Tomcat Connection Pool[$0],*/Idle
+  Base = tomcat.jdbc:type=ConnectionPool,class=org.apache.tomcat.jdbc.pool.DataSource,name=Tomcat Connection Pool[$0],*/MaxIdle
+  Name  = ${3:dbpool_idle}
+  Label = %.2r% $0 DB connections idle (%v %u idle / %b %w max)
+  Critical = ${1:90}
+  Warning = ${2:80}
+</Check>
+<Check tc_datasource_connections_active>
+  Value = tomcat.jdbc:type=ConnectionPool,class=org.apache.tomcat.jdbc.pool.DataSource,name=Tomcat Connection Pool[$0],*/NumActive
+  Base = tomcat.jdbc:type=ConnectionPool,class=org.apache.tomcat.jdbc.pool.DataSource,name=Tomcat Connection Pool[$0],*/MaxActive
+  Name  = ${3:dbpool_active}
+  Label = %.2r% $0 DB connections active (%v %u active / %b %w max)
+  Critical = ${1:100}
+  Warning = ${2:80}
+</Check>
+<Check tc_datasource_connections_capacity>
+  Value = tomcat.jdbc:type=ConnectionPool,class=org.apache.tomcat.jdbc.pool.DataSource,name=Tomcat Connection Pool[$0],*/NumActive
+  Base = tomcat.jdbc:type=ConnectionPool,class=org.apache.tomcat.jdbc.pool.DataSource,name=Tomcat Connection Pool[$0],*/Idle
+  Name  = ${3:dbpool_capacity}
+  Label = %.2r% $0 DB connections capacity (%v %u active / %b %w idle)
+  Critical = ${1:100}
+  Warning = ${2:80}
+</Check>
+
+<MultiCheck  tc_datasource_connections>
+  SummaryOk All %n datasource checks are OK
+  SummaryFailure %e of %n checks failed [%d]
+  Check tc_datasource_connections_idle
+  Check tc_datasource_connections_active
+  Check tc_datasource_connections_capacity
+</MultiCheck>
+ 
+
+lsprh<X>rprd-i<Y>-nb_client
+Indique le nombre de client déployés dans une instance Tomcat
+
+Paramètre: nom de l'application dans la branche JMX
+
+RD LSPRH > Migration des outils de supervision > image2020-3-5 10:34:21.png
+
+ 
+
+/usr/bin/check_jmx4perl -u http://localhost:4000/j4p --product tomcat --config /ehc/fs1/adp/z2x/work-lsprh7tomcatdev_i1/config/lsprh_tomcat.cfg --method post --check tc_nb_client lsprh
+OK - nb client lsprh : Value 72 in range | 'nb client lsprh'=72;80;90
+Check Jmx4perl
+ 
+
+<Check tc_nb_client>
+  Value = ${0:lsprh}:type=com.adp.fr.cmn.soclebm.clientcontext.ClientContextAppServer,name=${0:lsprh}/ClientSize
+  Attribute = ClientSize
+  Name  = nb client ${0:lsprh}
+  Label = nb client ${0:lsprh}: %v
+  Critical = ${1:90}
+  Warning = ${2:80}
+</Check>
+ 
+
+lsprh<X>rprd-i<Y>-app_client_config_error
+Indique si il y a des erreurs de configuration d'un ou plusieurs clients sur l'instance LSPRH
+
+Paramètre: non
+
+ 
+
+/usr/bin/check_jmx4perl -u http://localhost:4000/j4p --product tomcat --config /ehc/fs1/adp/z2x/work-lsprh7tomcatdev_i1/config/lsprh_tomcat.cfg --method post --check tc_check_app_config_errors
+OK - All Client config are OK
+[1] OK lsprh: Errors detection activation: OK
+[2] OK lsprh: NO Client config Error detection: OK | 'lsprh: Errors detection activation'=false;;true 'lsprh: NO Error detection'=false;;true
+Check Jmx4perl
+Utilise la fonctionnalité multicheck et utilise le mode operation.
+
+<Check tc_check_app_errors>
+  MBean = lsprh:type=com.adp.fr.cmn.soclebm.clientcontext.ClientContextAppServer,name=lsprh
+  Operation = checkErrors
+  Argument true
+  Name = lsprh: Errors detection activation
+  Label =  %c
+  Critical = true
+</Check>
+<Check tc_display_app_errors>
+  MBean = lsprh:type=com.adp.fr.cmn.soclebm.clientcontext.ClientContextAppServer,name=lsprh
+  Operation = onError
+  Name = lsprh: NO Client config Error detection
+  Label = %c
+  Critical = true
+</Check>
+<MultiCheck  tc_check_app_config_errors>
+  SummaryOk All Client config are OK
+  SummaryFailure %e of %n checks failed [%d]
+  Check tc_check_app_errors
+  Check tc_display_app_errors
+</MultiCheck>
+ 
+
+Script de création des check Thruk
+Exemple Weblogic
+lx1188;lx1188.fr.ehc.adp.com;check_nrpe_arg!check_jmx4perl_conf!http\://lx1188.fr.ehc.adp.com\:8200/j4p!weblogic!lsprh!execute_thread_total_count;wood-24x7:no-lsprhp3Ik-check_execute_thread_total_count;ASPMonitoring;NULL;pnp-template;ASPMonitoring
+lx1188;lx1188.fr.ehc.adp.com;check_nrpe_arg!check_jmx4perl_conf!http\://lx1188.fr.ehc.adp.com\:8200/j4p!weblogic!lsprh!health_state;wood-24x7:no-lsprhp3Ik-check_health_state;ASPMonitoring;NULL;pnp-template;ASPMonitoring
+lx1188;lx1188.fr.ehc.adp.com;check_nrpe_arg!check_jmx4perl_conf!http\://lx1188.fr.ehc.adp.com\:8200/j4p!weblogic!lsprh!hogging_thread_count;wood-24x7:no-lsprhp3Ik-check_jmx_hogging_thread_count;ASPMonitoring;NULL;pnp-template;ASPMonitoring
+lx1188;lx1188.fr.ehc.adp.com;check_nrpe_arg!check_jmx4perl_conf!http\://lx1188.fr.ehc.adp.com\:8200/j4p!weblogic!lsprh!memory_heap;wood-24x7:no-lsprhp3Ik-check_jmx_heapmemory;ASPMonitoring;NULL;pnp-template;ASPMonitoring
+lx1188;lx1188.fr.ehc.adp.com;check_nrpe_arg!check_jmx4perl_conf!http\://lx1188.fr.ehc.adp.com\:8200/j4p!weblogic!lsprh!open_sockets;wood-24x7:no-lsprhp3Ik-check_open_sockets;ASPMonitoring;NULL;pnp-template;ASPMonitoring
+lx1188;lx1188.fr.ehc.adp.com;check_nrpe_arg!check_jmx4perl_conf!http\://lx1188.fr.ehc.adp.com\:8200/j4p!weblogic!lsprh!stuck_thread_count;wood-24x7:no-lsprhp3Ik-check_jmx_stuck_thread_count;ASPMonitoring;NULL;pnp-template;ASPMonitoring
+lx1188;lx1188.fr.ehc.adp.com;check_nrpe_arg!check_jmx4perl_conf!http\://lx1188.fr.ehc.adp.com\:8200/j4p!weblogic!lsprh!thread_count;wood-24x7:no-lsprhp3Ik-check_jmx_threadcount;ASPMonitoring;NULL;pnp-template;ASPMonitoring
+lx1188;lx1188.fr.ehc.adp.com;check_nrpe_arg!check_jmx4perl_conf!http\://lx1188.fr.ehc.adp.com\:8200/j4p!weblogic!weblogic!wls_webapp_sessions!wl_domain-gamma;wood-24x7:no-lsprhp3Ik-check_jmx_webapp_sessions;ASPMonitoring;NULL;pnp-template;ASPMonitoring
+Exemple Tomcat
+ 
+
+lx1188;lx1188.fr.ehc.adp.com;check_nrpe_arg!check_jmx4perl_conf!http\://lx1188.fr.ehc.adp.com\:8200/j4p!tomcat!lsprh!tc_thread_count;wood-24x7:no-lsprhp3Ik-check_thread_count;ASPMonitoring;NULL;pnp-template;ASPMonitoring
+lx1188;lx1188.fr.ehc.adp.com;check_nrpe_arg!check_jmx4perl_conf!http\://lx1188.fr.ehc.adp.com\:8200/j4p!tomcat!lsprh!memory_heap;wood-24x7:no-lsprhp3Ik-check_jmx_heapmemory;ASPMonitoring;NULL;pnp-template;ASPMonitoring
+lx1188;lx1188.fr.ehc.adp.com;check_nrpe_arg!check_jmx4perl_conf!http\://lx1188.fr.ehc.adp.com\:8200/j4p!tomcat!lsprh!tc_open_file_descriptor;wood-24x7:no-lsprhp3Ik-check_open_file_descriptors;ASPMonitoring;NULL;pnp-template;ASPMonitoring
+lx1188;lx1188.fr.ehc.adp.com;check_nrpe_arg!check_jmx4perl_conf!http\://lx1188.fr.ehc.adp.com\:8200/j4p!tomcat!lsprh!tc_connector_threads!http-nio2-8200;wood-24x7:no-lsprhp3Ik-check_jmx_connector_thread_count;ASPMonitoring;NULL;pnp-template;ASPMonitoring
+lx1188;lx1188.fr.ehc.adp.com;check_nrpe_arg!check_jmx4perl_conf!http\://lx1188.fr.ehc.adp.com\:8200/j4p!tomcat!lsprh!tc_stuck_thread_count;wood-24x7:no-lsprhp3Ik-check_jmx_stuck_threadcount;ASPMonitoring;NULL;pnp-template;ASPMonitoring
+lx1188;lx1188.fr.ehc.adp.com;check_nrpe_arg!check_jmx4perl_conf!http\://lx1188.fr.ehc.adp.com\:8200/j4p!tomcat!lsprh!tc_session_active!gamma;wood-24x7:no-lsprhp3Ik-check_jmx_webapp_sessions;ASPMonitoring;NULL;pnp-template;ASPMonitoring
+lx1188;lx1188.fr.ehc.adp.com;check_nrpe_arg!check_jmx4perl_conf!http\://lx1188.fr.ehc.adp.com\:8200/j4p!tomcat!lsprh!tc_connector_request_count!http-nio2-8200;wood-24x7:no-lsprhp3Ik-check_jmx_connector_request_counts;ASPMonitoring;NULL;pnp-template;ASPMonitoring
+lx1188;lx1188.fr.ehc.adp.com;check_nrpe_arg!check_jmx4perl_conf!http\://lx1188.fr.ehc.adp.com\:8200/j4p!tomcat!lsprh!tc_datasource_connections!BDZ2X_FR20191121093638338;wood-24x7:no-lsprhp3Ik-check_jmx_datasource_connectionss;ASPMonitoring;NULL;pnp-template;ASPMonitoring
+lx1188;lx1188.fr.ehc.adp.com;check_nrpe_arg!check_jmx4perl_conf!http\://lx1188.fr.ehc.adp.com\:8200/j4p!tomcat!lsprh!tc_nb_client!lsprh;wood-24x7:no-lsprhp3Ik-check_nb_client;ASPMonitoring;NULL;pnp-template;ASPMonitoring
+lx1188;lx1188.fr.ehc.adp.com;check_nrpe_arg!check_jmx4perl_conf!http\://lx1188.fr.ehc.adp.com\:8200/j4p!tomcat!lsprh!tc_check_app_config_errors;wood-24x7:no-lsprhp3Ik-check_app_client_config_error;ASPMonitoring;NULL;pnp-template;ASPMonitoring
+ 
+
+FIchier de config jmx4perl à intégrer dans le fichier utilisé par le THRUK de production
+ 
+
+ <Check tc_stuck_thread_count>
+#  Need org.apache.catalina.valves.StuckThreadDetectionValve activated
+   Value = Catalina:type=Valve,host=localhost,name=StuckThreadDetectionValve/stuckThreadCount
+   Name = Stuck-Thread-Count
+   Critical = ${0:20}
+   Warning = ${1:10}
+</Check>
+
+
+<Check tc_open_file_descriptor>
+   Value = java.lang:type=OperatingSystem/OpenFileDescriptorCount
+   Name = Open-File-Descriptor
+   Critical = ${1:3000}
+   Warning = ${2:1000}
+</Check>
+
+# Check for monitoring the total (absolute) count of threads
+# active within an application
+# $0 : Critical threshold (default: 1000)
+# $1 : Warning threshold (default: 800)
+<Check tc_thread_count>
+   Value = java.lang:type=Threading/ThreadCount
+   Name = Thread-Count
+   Critical = ${0:1000}
+   Warning = ${1:800}
+</Check>
+
+# Number of connector threads in relation to maximum
+# allowed connector threads
+# $0: Name of connector (e.g. 'http-8080')
+# $1: Critical (optional)
+# $2: Warning (optional)
+<Check tc_connector_threads>
+  Use = relative_base($1,$2)
+  Label = Connector $0 : $BASE
+  Name = ${3:connector_threads}
+  Value = *:type=ThreadPool,name="$0"/currentThreadsBusy
+  Base = *:type=ThreadPool,name="$0"/maxThreads
+  Critical = ${1:150}
+  Warning = ${2:100}
+</Check>
+
+# Number of active sessions at this moment
+# $0: Path name without leading slash
+# $1: Critical (optional)
+# $2: Warning (optional)
+<Check tc_session_active>
+  MBean = Catalina:type=Manager,host=localhost,context=/$0
+  Attribute = activeSessions
+  Name = ${3:sessions_active}
+  Label = $0: Active Sessions = %v
+  Critical = ${1:1500}
+  Warning = ${2:800}
+</Check>
+
+# Check for monitoring the cumulative total count of request on connectors (http or AJP)
+<Check tc_connector_request_count>
+   Value = Catalina:type=GlobalRequestProcessor,name="$0"/requestCount
+   Name = requestCount
+   Label = %v requetes pour $0 : %c
+</Check>
+ 
+<Check tc_datasource_connections_idle>
+  Value = tomcat.jdbc:type=ConnectionPool,class=org.apache.tomcat.jdbc.pool.DataSource,name=Tomcat Connection Pool[$0],*/Idle
+  Base = tomcat.jdbc:type=ConnectionPool,class=org.apache.tomcat.jdbc.pool.DataSource,name=Tomcat Connection Pool[$0],*/MaxIdle
+  Name  = ${3:dbpool_idle}
+  Label = %.2r% $0 DB connections idle (%v %u idle / %b %w max)
+  Critical = ${1:90}
+  Warning = ${2:80}
+</Check>
+<Check tc_datasource_connections_active>
+  Value = tomcat.jdbc:type=ConnectionPool,class=org.apache.tomcat.jdbc.pool.DataSource,name=Tomcat Connection Pool[$0],*/NumActive
+  Base = tomcat.jdbc:type=ConnectionPool,class=org.apache.tomcat.jdbc.pool.DataSource,name=Tomcat Connection Pool[$0],*/MaxActive
+  Name  = ${3:dbpool_active}
+  Label = %.2r% $0 DB connections active (%v %u active / %b %w max)
+  Critical = ${1:100}
+  Warning = ${2:80}
+</Check>
+<Check tc_datasource_connections_capacity>
+  Value = tomcat.jdbc:type=ConnectionPool,class=org.apache.tomcat.jdbc.pool.DataSource,name=Tomcat Connection Pool[$0],*/NumActive
+  Base = tomcat.jdbc:type=ConnectionPool,class=org.apache.tomcat.jdbc.pool.DataSource,name=Tomcat Connection Pool[$0],*/Idle
+  Name  = ${3:dbpool_capacity}
+  Label = %.2r% $0 DB connections capacity (%v %u active / %b %w idle)
+  Critical = ${1:100}
+  Warning = ${2:80}
+</Check>
+
+<MultiCheck  tc_datasource_connections>
+  SummaryOk All %n datasource checks are OK
+  SummaryFailure %e of %n checks failed [%d]
+  Check tc_datasource_connections_idle
+  Check tc_datasource_connections_active
+  Check tc_datasource_connections_capacity
+</MultiCheck>
+
+
+<Check tc_nb_client>
+  Value = ${0:lsprh}:type=com.adp.fr.cmn.soclebm.clientcontext.ClientContextAppServer,name=${0:lsprh}/ClientSize
+  Attribute = ClientSize
+  Name  = nb client ${0:lsprh}
+  Label = nb client ${0:lsprh}: %v
+  Critical = ${1:90}
+  Warning = ${2:80}
+</Check>
+
+
+<Check tc_check_app_errors>
+  MBean = lsprh:type=com.adp.fr.cmn.soclebm.clientcontext.ClientContextAppServer,name=lsprh
+  Operation = checkErrors
+  Argument true
+  Name = lsprh: Errors detection activation
+  Label =  %c
+  Critical = true
+</Check>
+<Check tc_display_app_errors>
+  MBean = lsprh:type=com.adp.fr.cmn.soclebm.clientcontext.ClientContextAppServer,name=lsprh
+  Operation = onError
+  Name = lsprh: NO Client config Error detection
+  Label = %c
+  Critical = true
+</Check>
+<MultiCheck  tc_check_app_config_errors>
+  SummaryOk All Client config are OK
+  SummaryFailure %e of %n checks failed [%d]
+  Check tc_check_app_errors
+  Check tc_display_app_errors
+</MultiCheck>
+ 
+
+
+
+ 

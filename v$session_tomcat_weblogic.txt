@@ -1,0 +1,34 @@
+Bonjour, 
+
+Je ne sais pas si cela peut vous intéresser mais hier en debuggant un prob sur Tomcat j’ai trouvé un paramétrage de JVM qui permet de surcharger les valeur contenues dans la table v$session Oracle.
+Cela permet de pouvoir indiquer des valeurs spécifiques au lieu des valeurs par défaut et de faciliter la recherche d’informations dans Oracle.
+
+Par exemple :
+
+Tomcat :
+Dans script local.sh :
+Ajout de : 
+export JAVA_OPTS='-Doracle.jdbc.v\$session.program=<nom_instance>'
+Puis redémarrage instance Tomcat.
+Dans Oracle il est maintenant possible de filtrer la requête sur la colonne PROGRAM pour afficher toutes les sessions JDBC pour l’instance lsprh7tomcatdev_i1 uniquement.
+
+ 
+
+Weblogic (non testé):
+
+Soit 
+•	en ajoutant '-Doracle.jdbc.v\$session.program=<nom_instance>’ aux paramètres de lancement du domaine Weblogic
+•	Par WLST
+cd('/JDBCSystemResource/myds/JdbcResource/ds_BDZ2X_FR20190521111603985')
+cd('JDBCDriverParams/NO_NAME_0')
+cd('Properties/NO_NAME_0')
+create('v$session.program','Property')
+cd('Property')
+cd('v$session.program')
+set('SysPropValue', '<nom_instance>')
+
+•	En ajoutant manuellement à la config de chaque datasource d’une instance les balises suivantes
+
+ 
+
+Vincent
