@@ -8,7 +8,7 @@
 
 > :lock: As root
 ```bash
-root# loginctl enable-linger infog
+root# loginctl enable-linger user
 ```
 > :warning: in order to access systemd logs , tomcat user must be member of following groups:
 * systemd-journal
